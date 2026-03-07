@@ -14,13 +14,13 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements file
-COPY requirements.txt .
+# Copy requirements file (using wildcard to handle potential context path variations)
+COPY *requirements.txt ./
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy everything from the current context
+# Copy all project files into the container
 COPY . .
 
 # Expose the port (Render sets the PORT environment variable)
