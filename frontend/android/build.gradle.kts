@@ -1,7 +1,18 @@
+import com.android.build.gradle.BaseExtension
+
 allprojects {
     repositories {
         google()
         mavenCentral()
+    }
+}
+
+subprojects {
+    afterEvaluate {
+        val extension = project.extensions.findByName("android")
+        if (extension != null && extension is com.android.build.gradle.BaseExtension) {
+            extension.defaultConfig.minSdk = 24
+        }
     }
 }
 

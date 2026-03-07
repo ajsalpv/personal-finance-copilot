@@ -21,7 +21,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
-COPY app/ ./app/
+COPY . .
 
 # Expose the port (Render sets the PORT environment variable)
 EXPOSE 8000
