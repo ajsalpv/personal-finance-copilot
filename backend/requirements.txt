@@ -28,9 +28,8 @@ python-dotenv==1.0.1
 python-telegram-bot==21.9
 
 # --- Voice Authentication ---
-# resemblyzer requires webrtcvad which needs C++ build tools
-# Install separately: pip install resemblyzer
-# Or install C++ build tools first: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+resemblyzer==0.1.4
+librosa==0.10.1
 soundfile==0.12.1
 
 # --- AI / LLM (ready for Phase 2) ---
@@ -40,4 +39,4 @@ langchain-groq==0.2.4
 # --- Utilities ---
 python-multipart==0.0.20
 httpx==0.28.1
-numpy==2.2.1
+numpy==1.26.4

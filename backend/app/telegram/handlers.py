@@ -13,6 +13,8 @@ from app.config import get_settings
 from app.database import async_session_factory
 from app.services import transaction_service, budget_service, task_service
 from app.services import memory_service, timeline_service
+import io
+import httpx
 import time
 import uuid
 
@@ -417,12 +419,102 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 # Voice message handler
 # ---------------------------------------------------------------------------
 async def voice_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle voice messages — Phase 1 acknowledges, Phase 2 will process."""
-    await update.message.reply_text(
-        "🎙️ Voice message received!\n"
-        "Voice-to-text processing is coming in Phase 2.\n"
-        "For now, please type your commands.",
-    )
+    """
+    Strict Voice Authentication:
+    1. Download audio
+    2. Verify voice fingerprint (Resemblyzer)
+    3. Transcribe (Groq Whisper)
+    4. Process as AI Agent command
+    """
+    telegram_id = str(update.effective_user.id)
+    user_id = await _get_user_id(telegram_id)
+    
+    if not user_id:
+        await update.message.reply_text("⚠️ You are not registered.")
+        return
+
+    # UX: Show "record_voice" action while processing
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action='record_voice')
+
+    # 1. Download voice file from Telegram
+    voice_file = await update.message.voice.get_file()
+    audio_buffer = io.BytesIO()
+    await voice_file.download_to_memory(audio_buffer)
+    audio_bytes = audio_buffer.getvalue()
+
+    async with async_session_factory() as db:
+        # Fetch user's reference embedding
+        from sqlalchemy import text
+        result = await db.execute(text("SELECT voice_embedding FROM users WHERE id = :id"), {"id": user_id})
+        row = result.fetchone()
+        
+        if not row or not row[0]:
+            await update.message.reply_text("👋 I haven't learned your voice yet. Please enroll your voice via the mobile app or API first.")
+            return
+            
+        from app.security.voice_auth import verify_voice, bytes_to_embedding
+        reference_embedding = bytes_to_embedding(row[0])
+
+        # 2. Verify voice identity
+        try:
+            is_verified, score = verify_voice(audio_bytes, reference_embedding)
+            logger.info(f"Voice verification for {telegram_id}: score={score:.4f}, verified={is_verified}")
+            
+            if not is_verified:
+                await update.message.reply_text("🔒 Voice mismatch. I only take orders from my master.")
+                return
+        except Exception as e:
+            logger.error(f"Voice verification failed: {e}")
+            await update.message.reply_text("⚠️ Voice authentication error. Please try again or type.")
+            return
+
+    # 3. Transcribe via Groq Whisper API
+    try:
+        from app.config import get_settings
+        settings = get_settings()
+        
+        # We need a file-like object with a proper extension for Groq
+        audio_buffer.seek(0)
+        # Wrap in a way Groq's client likes it (or use httpx directly for speed)
+        async with httpx.AsyncClient() as client:
+            files = {'file': ('voice.ogg', audio_bytes, 'audio/ogg')}
+            response = await client.post(
+                "https://api.groq.com/openai/v1/audio/transcriptions",
+                headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
+                files=files,
+                data={"model": "whisper-large-v3-turbo"}
+            )
+            response.raise_for_status()
+            transcription = response.json().get("text", "")
+            
+        if not transcription:
+            await update.message.reply_text("🤷 I heard you, but couldn't understand the words.")
+            return
+            
+        await update.message.reply_text(f"🎤 _I heard:_ \"{transcription}\"", parse_mode="Markdown")
+        
+    except Exception as e:
+        logger.error(f"Transcription error: {e}")
+        await update.message.reply_text("⚠️ Error transcribing voice.")
+        return
+
+    # 4. Process transcribed text as Agent command
+    from app.ai.agent import process_message
+    
+    # Ensure session is active
+    if telegram_id not in active_sessions:
+        active_sessions[telegram_id] = time.time()
+        session_threads[telegram_id] = str(uuid.uuid4())
+    
+    thread_id = session_threads.get(telegram_id)
+    
+    try:
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action='typing')
+        response = await process_message(thread_id, user_id, transcription)
+        await update.message.reply_text(response)
+    except Exception as e:
+        logger.error(f"Agent error from voice: {e}")
+        await update.message.reply_text("Error processing your voice command.")
 
 
 # ---------------------------------------------------------------------------

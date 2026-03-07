@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
-  // Use 10.0.2.2 for Android Emulator, or localhost for iOS/Web.
-  static const String baseUrl = 'http://127.0.0.1:8000/api';
+  // Production URL on Render
+  static const String baseUrl = 'https://personal-finance-copilot.onrender.com/api';
   
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
