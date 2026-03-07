@@ -1,18 +1,19 @@
 import 'dart:io';
-import 'package:native_screenshot/native_screenshot.dart';
+import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:logging/logging.dart';
 
 final _logger = Logger('VisionService');
 
 class VisionService {
-  /// Captures a screenshot of the current screen.
-  static Future<File?> captureScreen() async {
+  /// Captures a screenshot of the current screen using the provided controller.
+  static Future<File?> captureScreen(ScreenshotController controller) async {
     try {
-      final String? path = await NativeScreenshot.takeScreenshot();
-      if (path != null) {
-        _logger.info('Screenshot captured at: $path');
-        return File(path);
+      final imageBytes = await controller.capture();
+      if (imageBytes != null) {
+        final file = await saveTempImage(imageBytes);
+        _logger.info('Screenshot captured at: ${file.path}');
+        return file;
       }
     } catch (e) {
       _logger.severe('Failed to capture screenshot: $e');

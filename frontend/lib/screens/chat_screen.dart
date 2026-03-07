@@ -1,10 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:screenshot/screenshot.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:camera/camera.dart';
 import '../services/vision_service.dart';
+import '../services/api_client.dart';
+import '../services/assistant_service.dart';
+import '../services/security_service.dart';
+import '../services/background_service.dart';
 import '../widgets/call_concierge_overlay.dart';
+import '../widgets/visual_feedback.dart';
+import '../widgets/floating_assistant.dart';
+import 'dashboard_screen.dart';
+import 'package:logging/logging.dart';
+
+final _logger = Logger('ChatScreen');
 
 class ChatScreen extends StatefulWidget {
   @override
@@ -18,6 +29,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = false;
   bool _isBackgroundListening = false;
   bool _showOverlay = false;
+  final ScreenshotController _screenshotController = ScreenshotController();
   
   // Vision Mode
   CameraController? _cameraController;
@@ -42,6 +54,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _flutterTts = FlutterTts();
     _initTts();
     _initSharing();
+    AssistantService.screenshotController = _screenshotController;
     
     // Initial welcome message
     _messages.add({
@@ -98,7 +111,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _isLoading = true;
       _showOverlay = true;
     });
-    final file = await VisionService.captureScreen();
+    final file = await VisionService.captureScreen(_screenshotController);
     if (file != null) {
       // Send to backend vision endpoint
       // For now, add a mock message
@@ -120,14 +133,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _initSharing() {
     // Listen for shared media while app is running
-    ReceiveSharingIntent.getMediaStream().listen((List<SharedMediaFile> value) {
+    ReceiveSharingIntent.instance.getMediaStream().listen((List<SharedMediaFile> value) {
       if (value.isNotEmpty) {
         _processSharedFile(value.first.path);
       }
     });
 
     // Listen for shared media while app is closed
-    ReceiveSharingIntent.getInitialMedia().then((List<SharedMediaFile> value) {
+    ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> value) {
       if (value.isNotEmpty) {
         _processSharedFile(value.first.path);
       }
@@ -152,7 +165,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_isBackgroundListening) {
       await AssistantBackgroundService.stop();
     } else {
-      await requestAssistantPermissions();
+      await AssistantService.requestPermissions();
       await AssistantBackgroundService.start();
     }
     setState(() => _isBackgroundListening = !_isBackgroundListening);
@@ -302,8 +315,10 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       ),
-      body: Stack(
-        children: [
+      body: Screenshot(
+        controller: _screenshotController,
+        child: Stack(
+          children: [
           if (_isVisionMode && _cameraController != null && _cameraController!.value.isInitialized)
             Positioned.fill(
               child: CameraPreview(_cameraController!),
@@ -346,6 +361,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   },
                 ),
               ),
+            ),
               // Glow Overlay
               CallistaGlow(isListening: _isListening, isThinking: _isLoading),
               Container(
@@ -436,6 +452,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

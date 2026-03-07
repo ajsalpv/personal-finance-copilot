@@ -1,5 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'services/background_service.dart';
+import 'screens/chat_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -8,16 +10,6 @@ void main() async {
   AssistantBackgroundService.init();
   
   runApp(const NovaApp());
-}
-
-Future<void> requestAssistantPermissions() async {
-  await [
-    Permission.microphone,
-    Permission.contacts,
-    Permission.phone,
-    Permission.location,
-    Permission.notification,
-  ].request();
 }
 
 class NovaApp extends StatelessWidget {

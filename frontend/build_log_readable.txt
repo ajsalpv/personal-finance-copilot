@@ -1,0 +1,52 @@
+﻿
+Running Gradle task 'assembleRelease'...                        
+flutter : 
+At line:1 char:1
++ flutter build apk > 
+build_log_utf8.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (:String) [],    
+ RemoteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Could not determine 
+the dependencies of 
+task ':native_screensho
+t:bundleLibCompileToJar
+Release'.
+> Could not create 
+task ':native_screensho
+t:compileReleaseJavaWit
+hJavac'.
+   > In order to 
+compile Java 9+ 
+source, please set 
+compileSdkVersion to 
+30 or above
+
+* Try:
+> Run with 
+--stacktrace option to 
+get the stack trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at http
+s://help.gradle.org.
+
+BUILD FAILED in 25s
+Running Gradle task 'assembleRelease'...                           29.4s
+Gradle task 
+assembleRelease failed 
+with exit code 1

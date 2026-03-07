@@ -1,0 +1,251 @@
+﻿
+Running Gradle task 'assembleRelease'...                        
+flutter : Invalid 
+depfile: A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+At line:1 char:18
++ flutter pub get; 
+flutter build apk > 
+build_log_attempt7.txt 
+2>&1
++                  ~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Invalid depfi   
+ le...pshot_program    
+.d:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 4252 bytes (99.7% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+Incorrect package="flut
+ter.plugins.contactsser
+vice.contactsservice" 
+found in source 
+AndroidManifest.xml: C:
+\Users\pvajs\AppData\Lo
+cal\Pub\Cache\hosted\pu
+b.dev\contacts_service-
+0.6.3\android\src\main\
+AndroidManifest.xml.
+Setting the namespace 
+via the package 
+attribute in the 
+source 
+AndroidManifest.xml is 
+no longer supported.
+Recommendation: remove 
+package="flutter.plugin
+s.contactsservice.conta
+ctsservice" from the 
+source 
+AndroidManifest.xml: C:
+\Users\pvajs\AppData\Lo
+cal\Pub\Cache\hosted\pu
+b.dev\contacts_service-
+0.6.3\android\src\main\
+AndroidManifest.xml.
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task ':contacts_service
+:processReleaseManifest
+'.
+> A failure occurred 
+while executing com.and
+roid.build.gradle.tasks
+.ProcessLibraryManifest
+$ProcessLibWorkAction
+   > Incorrect package=
+"flutter.plugins.contac
+tsservice.contactsservi
+ce" found in source 
+AndroidManifest.xml: C:
+\Users\pvajs\AppData\Lo
+cal\Pub\Cache\hosted\pu
+b.dev\contacts_service-
+0.6.3\android\src\main\
+AndroidManifest.xml.
+     Setting the 
+namespace via the 
+package attribute in 
+the source 
+AndroidManifest.xml is 
+no longer supported.
+     Recommendation: 
+remove package="flutter
+.plugins.contactsservic
+e.contactsservice" 
+from the source 
+AndroidManifest.xml: C:
+\Users\pvajs\AppData\Lo
+cal\Pub\Cache\hosted\pu
+b.dev\contacts_service-
+0.6.3\android\src\main\
+AndroidManifest.xml.
+
+* Try:
+> Run with 
+--stacktrace option to 
+get the stack trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at http
+s://help.gradle.org.
+
+BUILD FAILED in 1m 55s
+Running Gradle task 'assembleRelease'...                          116.4s
+Gradle task 
+assembleRelease failed 
+with exit code 1

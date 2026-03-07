@@ -1,9 +1,23 @@
+import 'package:screenshot/screenshot.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:logging/logging.dart';
+import 'package:permission_handler/permission_handler.dart';
+import '../services/vision_service.dart';
 
 final _logger = Logger('AssistantService');
 
 class AssistantService {
+  static ScreenshotController? screenshotController;
+
+  static Future<void> requestPermissions() async {
+    await [
+      Permission.microphone,
+      Permission.contacts,
+      Permission.phone,
+      Permission.location,
+      Permission.notification,
+    ].request();
+  }
   /// Interprets and executes system-level commands returned by the AI Agent.
   static Future<void> handleCommand(String fullCommand) async {
     // Commands are formatted as COMMAND:ACTION|PARAM1|PARAM2...
@@ -75,6 +89,11 @@ class AssistantService {
 
   static Future<void> _scanCurrentScreen() async {
     _logger.info("Callista is scanning the screen...");
+    if (screenshotController != null) {
+      await VisionService.captureScreen(screenshotController!);
+    } else {
+      _logger.warning("ScreenshotController not initialized!");
+    }
   }
 
   static Future<void> _controlDevice(String feature, String action) async {

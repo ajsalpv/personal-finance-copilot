@@ -1,0 +1,114 @@
+﻿
+Running Gradle task 'assembleRelease'...                        
+flutter : Error: 
+Couldn't resolve the 
+package 'crypto' in 'pa
+ckage:crypto/crypto.dar
+t'.
+At line:1 char:1
++ flutter build apk > 
+build_log_attempt6.txt 
+2>&1
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Error: Couldn   
+ 't...o/crypto.dart    
+'.:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+lib/services/security_s
+ervice.dart:2:8: 
+Error: Not found: 'pack
+age:crypto/crypto.dart'
+import 'package:crypto/
+crypto.dart';
+       ^
+lib/services/security_s
+ervice.dart:17:13: 
+Error: Undefined name 
+'sha256'.
+      key = sha256.conv
+ert(utf8.encode(DateTim
+e.now().toIso8601String
+())).toString();
+            ^^^^^^
+Unhandled exception:
+FileSystemException(uri
+=org-dartlang-untransla
+table-uri:package%3Acry
+pto%2Fcrypto.dart; mess
+age=StandardFileSystem 
+only supports file:* 
+and data:* URIs)
+#0      StandardFileSys
+tem.entityForUri (packa
+ge:front_end/src/api_pr
+ototype/standard_file_s
+ystem.dart:45)
+#1      asFileUri (pack
+age:vm/kernel_front_end
+.dart:820)
+#2      writeDepfile (p
+ackage:vm/kernel_front_
+end.dart:960)
+<asynchronous 
+suspension>
+#3      FrontendCompile
+r.compile (package:fron
+tend_server/frontend_se
+rver.dart:712)
+<asynchronous 
+suspension>
+#4      starter (packag
+e:frontend_server/start
+er.dart:109)
+<asynchronous 
+suspension>
+#5      main (file:///C
+:/b/s/w/ir/x/w/sdk/pkg/
+frontend_server/bin/fro
+ntend_server_starter.da
+rt:13)
+<asynchronous 
+suspension>
+
+Target kernel_snapshot_
+program failed: 
+Exception
+
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task ':app:compileFlutt
+erBuildRelease'.
+> Process 'command 'A:\
+flutter\bin\flutter.bat
+'' finished with 
+non-zero exit value 1
+
+* Try:
+> Run with 
+--stacktrace option to 
+get the stack trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at http
+s://help.gradle.org.
+
+BUILD FAILED in 48s
+Running Gradle task 'assembleRelease'...                           49.3s
+Gradle task 
+assembleRelease failed 
+with exit code 1

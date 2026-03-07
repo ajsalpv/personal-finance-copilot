@@ -1,0 +1,475 @@
+﻿
+Running Gradle task 'assembleRelease'...                        
+flutter : Invalid 
+depfile: A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+At line:1 char:1
++ flutter build apk > b
+uild_log_final_verified
+.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Invalid depfi   
+ le...pshot_program    
+.d:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+Invalid depfile: 
+A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\.dart_tool\flutter_bu
+ild\482d342a79f42e25ff1
+101f37072566a\kernel_sn
+apshot_program.d
+lib/screens/chat_screen
+.dart:313:23: Error: 
+Can't find ')' to 
+match '('.
+              Expanded(
+                      ^
+lib/screens/chat_screen
+.dart:123:26: Error: 
+Member not found: 'Rece
+iveSharingIntent.getMed
+iaStream'.
+    ReceiveSharingInten
+t.getMediaStream().list
+en((List<SharedMediaFil
+e> value) {
+                       
+  ^^^^^^^^^^^^^^
+lib/screens/chat_screen
+.dart:130:26: Error: 
+Member not found: 'Rece
+iveSharingIntent.getIni
+tialMedia'.
+    ReceiveSharingInten
+t.getInitialMedia().the
+n((List<SharedMediaFile
+> value) {
+                       
+  ^^^^^^^^^^^^^^^
+lib/screens/chat_screen
+.dart:153:13: Error: 
+The getter 'AssistantBa
+ckgroundService' isn't 
+defined for the class 
+'_ChatScreenState'.
+ - '_ChatScreenState' 
+is from 'package:fronte
+nd/screens/chat_screen.
+dart' ('lib/screens/cha
+t_screen.dart').
+Try correcting the 
+name to the name of an 
+existing getter, or 
+defining a getter or 
+field named 'AssistantB
+ackgroundService'.
+      await AssistantBa
+ckgroundService.stop();
+            ^^^^^^^^^^^
+^^^^^^^^^^^^^^^
+lib/screens/chat_screen
+.dart:155:13: Error: 
+The method 'requestAssi
+stantPermissions' 
+isn't defined for the 
+class 
+'_ChatScreenState'.
+ - '_ChatScreenState' 
+is from 'package:fronte
+nd/screens/chat_screen.
+dart' ('lib/screens/cha
+t_screen.dart').
+Try correcting the 
+name to the name of an 
+existing method, or 
+defining a method 
+named 'requestAssistant
+Permissions'.
+      await requestAssi
+stantPermissions();
+            ^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
+lib/screens/chat_screen
+.dart:156:13: Error: 
+The getter 'AssistantBa
+ckgroundService' isn't 
+defined for the class 
+'_ChatScreenState'.
+ - '_ChatScreenState' 
+is from 'package:fronte
+nd/screens/chat_screen.
+dart' ('lib/screens/cha
+t_screen.dart').
+Try correcting the 
+name to the name of an 
+existing getter, or 
+defining a getter or 
+field named 'AssistantB
+ackgroundService'.
+      await AssistantBa
+ckgroundService.start()
+;
+            ^^^^^^^^^^^
+^^^^^^^^^^^^^^^
+lib/screens/chat_screen
+.dart:207:30: Error: 
+The getter 'ApiClient' 
+isn't defined for the 
+class 
+'_ChatScreenState'.
+ - '_ChatScreenState' 
+is from 'package:fronte
+nd/screens/chat_screen.
+dart' ('lib/screens/cha
+t_screen.dart').
+Try correcting the 
+name to the name of an 
+existing getter, or 
+defining a getter or 
+field named 
+'ApiClient'.
+      final response = 
+await ApiClient.sendCha
+tMessage(text, 
+threadId: _threadId);
+                       
+      ^^^^^^^^^
+lib/screens/chat_screen
+.dart:219:13: Error: 
+The getter 
+'SecurityService' 
+isn't defined for the 
+class 
+'_ChatScreenState'.
+ - '_ChatScreenState' 
+is from 'package:fronte
+nd/screens/chat_screen.
+dart' ('lib/screens/cha
+t_screen.dart').
+Try correcting the 
+name to the name of an 
+existing getter, or 
+defining a getter or 
+field named 
+'SecurityService'.
+        if (SecuritySer
+vice.isSensitiveCommand
+(reply)) {
+            
+^^^^^^^^^^^^^^^
+lib/screens/chat_screen
+.dart:220:33: Error: 
+The getter 
+'SecurityService' 
+isn't defined for the 
+class 
+'_ChatScreenState'.
+ - '_ChatScreenState' 
+is from 'package:fronte
+nd/screens/chat_screen.
+dart' ('lib/screens/cha
+t_screen.dart').
+Try correcting the 
+name to the name of an 
+existing getter, or 
+defining a getter or 
+field named 
+'SecurityService'.
+          bool 
+verified = await Securi
+tyService.verifyIdentit
+y();
+                       
+         
+^^^^^^^^^^^^^^^
+lib/screens/chat_screen
+.dart:222:14: Error: 
+The getter '_logger' 
+isn't defined for the 
+class 
+'_ChatScreenState'.
+ - '_ChatScreenState' 
+is from 'package:fronte
+nd/screens/chat_screen.
+dart' ('lib/screens/cha
+t_screen.dart').
+Try correcting the 
+name to the name of an 
+existing getter, or 
+defining a getter or 
+field named '_logger'.
+             _logger.wa
+rning("Sensitive 
+command blocked: 
+Identity not 
+verified.");
+             ^^^^^^^
+lib/screens/chat_screen
+.dart:226:15: Error: 
+The getter 
+'AssistantService' 
+isn't defined for the 
+class 
+'_ChatScreenState'.
+ - '_ChatScreenState' 
+is from 'package:fronte
+nd/screens/chat_screen.
+dart' ('lib/screens/cha
+t_screen.dart').
+Try correcting the 
+name to the name of an 
+existing getter, or 
+defining a getter or 
+field named 
+'AssistantService'.
+        await Assistant
+Service.handleCommand(r
+eply);
+              
+^^^^^^^^^^^^^^^^
+lib/screens/chat_screen
+.dart:313:23: Error: 
+Too many positional 
+arguments: 0 allowed, 
+but 2 found.
+Try removing the extra 
+positional arguments.
+              Expanded(
+                      ^
+/A:/flutter/packages/fl
+utter/lib/src/widgets/b
+asic.dart:5391:9: 
+Context: Found this 
+candidate, but the 
+arguments don't match.
+  const 
+Expanded({super.key, 
+super.flex, required 
+super.child}) : 
+super(fit: 
+FlexFit.tight);
+        ^^^^^^^^
+lib/screens/chat_screen
+.dart:298:59: Error: 
+The method 
+'DashboardScreen' 
+isn't defined for the 
+class 
+'_ChatScreenState'.
+ - '_ChatScreenState' 
+is from 'package:fronte
+nd/screens/chat_screen.
+dart' ('lib/screens/cha
+t_screen.dart').
+Try correcting the 
+name to the name of an 
+existing method, or 
+defining a method 
+named 
+'DashboardScreen'.
+                  Mater
+ialPageRoute(builder: 
+(context) => 
+DashboardScreen()),
+                       
+                       
+            
+^^^^^^^^^^^^^^^
+lib/screens/chat_screen
+.dart:422:13: Error: 
+The method 'FloatingAss
+istantOverlay' isn't 
+defined for the class 
+'_ChatScreenState'.
+ - '_ChatScreenState' 
+is from 'package:fronte
+nd/screens/chat_screen.
+dart' ('lib/screens/cha
+t_screen.dart').
+Try correcting the 
+name to the name of an 
+existing method, or 
+defining a method 
+named 'FloatingAssistan
+tOverlay'.
+            FloatingAss
+istantOverlay(
+            ^^^^^^^^^^^
+^^^^^^^^^^^^^
+Target kernel_snapshot_
+program failed: 
+Exception
+
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task ':app:compileFlutt
+erBuildRelease'.
+> Process 'command 'A:\
+flutter\bin\flutter.bat
+'' finished with 
+non-zero exit value 1
+
+* Try:
+> Run with 
+--stacktrace option to 
+get the stack trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at http
+s://help.gradle.org.
+
+BUILD FAILED in 33s
+Running Gradle task 'assembleRelease'...                           34.1s
+Gradle task 
+assembleRelease failed 
+with exit code 1

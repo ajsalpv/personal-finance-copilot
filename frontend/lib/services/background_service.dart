@@ -44,25 +44,28 @@ class BackgroundVoiceHandler extends TaskHandler {
 class AssistantBackgroundService {
   static void init() {
     FlutterForegroundTask.init(
-      notificationOptions: const NotificationOptions(
+      androidNotificationOptions: AndroidNotificationOptions(
         id: 101,
         channelId: 'callista_assistant',
         channelName: 'Callista Assistant Service',
         channelDescription: 'Listening for Callista wake word',
         channelImportance: NotificationChannelImportance.LOW,
         priority: NotificationPriority.LOW,
-        iconData: NotificationIconData(
+        iconData: const NotificationIconData(
           resType: ResourceType.mipmap,
           resPrefix: ResourcePrefix.ic,
           name: 'launcher',
         ),
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: true,
+        playSound: false,
       ),
       foregroundTaskOptions: const ForegroundTaskOptions(
         interval: 5000,
         isOnceEvent: false,
         autoRunOnBoot: true,
         allowWakeLock: true,
-        allowWifiLock: true,
       ),
     );
   }

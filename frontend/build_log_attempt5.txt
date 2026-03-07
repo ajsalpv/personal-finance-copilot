@@ -1,0 +1,310 @@
+﻿
+Running Gradle task 'assembleRelease'...                        
+flutter : Error: 
+Couldn't resolve the 
+package 'logging' in 'p
+ackage:logging/logging.
+dart'.
+At line:1 char:1
++ flutter build apk > 
+build_log_final.txt 
+2>&1
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Error: Couldn   
+ 't.../logging.dart    
+'.:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+lib/services/background
+_service.dart:4:8: 
+Error: Not found: 'pack
+age:logging/logging.dar
+t'
+import 'package:logging
+/logging.dart';
+       ^
+lib/main.dart:23:23: 
+Error: Type 
+'StatelessWidget' not 
+found.
+class NovaApp extends 
+StatelessWidget {
+                      
+^^^^^^^^^^^^^^^
+lib/main.dart:27:3: 
+Error: Type 'Widget' 
+not found.
+  Widget 
+build(BuildContext 
+context) {
+  ^^^^^^
+lib/main.dart:27:16: 
+Error: Type 
+'BuildContext' not 
+found.
+  Widget 
+build(BuildContext 
+context) {
+               
+^^^^^^^^^^^^
+lib/services/background
+_service.dart:6:17: 
+Error: Method not 
+found: 'Logger'.
+final _logger = Logger(
+'BackgroundService');
+                ^^^^^^
+lib/main.dart:24:24: 
+Error: The super 
+constructor has no 
+corresponding named 
+parameter.
+  const 
+NovaApp({super.key});
+                       
+^
+lib/main.dart:5:3: 
+Error: Undefined name '
+WidgetsFlutterBinding'.
+  WidgetsFlutterBinding
+.ensureInitialized();
+  ^^^^^^^^^^^^^^^^^^^^^
+lib/main.dart:10:3: 
+Error: Method not 
+found: 'runApp'.
+  runApp(const 
+NovaApp());
+  ^^^^^^
+lib/main.dart:27:16: 
+Error: 'BuildContext' 
+isn't a type.
+  Widget 
+build(BuildContext 
+context) {
+               
+^^^^^^^^^^^^
+lib/main.dart:31:29: 
+Error: Couldn't find 
+constructor 'Color'.
+        primaryColor: 
+const 
+Color(0xFF6366F1), // 
+Deep Indigo
+                       
+     ^^^^^
+lib/main.dart:32:40: 
+Error: Couldn't find 
+constructor 'Color'.
+        scaffoldBackgro
+undColor: const 
+Color(0xFF0F172A), // 
+Onyx
+                       
+                ^^^^^
+lib/main.dart:34:28: 
+Error: Couldn't find 
+constructor 'Color'.
+          seedColor: 
+const 
+Color(0xFF6366F1),
+                       
+    ^^^^^
+lib/main.dart:28:12: 
+Error: The method 
+'MaterialApp' isn't 
+defined for the class 
+'NovaApp'.
+ - 'NovaApp' is from 'p
+ackage:frontend/main.da
+rt' ('lib/main.dart').
+Try correcting the 
+name to the name of an 
+existing method, or 
+defining a method 
+named 'MaterialApp'.
+    return MaterialApp(
+           ^^^^^^^^^^^
+lib/main.dart:30:14: 
+Error: The getter 
+'ThemeData' isn't 
+defined for the class 
+'NovaApp'.
+ - 'NovaApp' is from 'p
+ackage:frontend/main.da
+rt' ('lib/main.dart').
+Try correcting the 
+name to the name of an 
+existing getter, or 
+defining a getter or 
+field named 
+'ThemeData'.
+      theme: ThemeData.
+dark().copyWith(
+             ^^^^^^^^^
+lib/main.dart:33:22: 
+Error: The getter 
+'ColorScheme' isn't 
+defined for the class 
+'NovaApp'.
+ - 'NovaApp' is from 'p
+ackage:frontend/main.da
+rt' ('lib/main.dart').
+Try correcting the 
+name to the name of an 
+existing getter, or 
+defining a getter or 
+field named 
+'ColorScheme'.
+        colorScheme: 
+ColorScheme.fromSeed(
+                     
+^^^^^^^^^^^
+lib/main.dart:35:23: 
+Error: The getter 
+'Brightness' isn't 
+defined for the class 
+'NovaApp'.
+ - 'NovaApp' is from 'p
+ackage:frontend/main.da
+rt' ('lib/main.dart').
+Try correcting the 
+name to the name of an 
+existing getter, or 
+defining a getter or 
+field named 
+'Brightness'.
+          brightness: 
+Brightness.dark,
+                      
+^^^^^^^^^^
+lib/main.dart:38:13: 
+Error: The method 
+'ChatScreen' isn't 
+defined for the class 
+'NovaApp'.
+ - 'NovaApp' is from 'p
+ackage:frontend/main.da
+rt' ('lib/main.dart').
+Try correcting the 
+name to the name of an 
+existing method, or 
+defining a method 
+named 'ChatScreen'.
+      home: 
+ChatScreen(),
+            ^^^^^^^^^^
+lib/services/background
+_service.dart:47:34: 
+Error: Couldn't find 
+constructor 
+'NotificationOptions'.
+      
+notificationOptions: 
+const 
+NotificationOptions(
+                       
+          
+^^^^^^^^^^^^^^^^^^^
+lib/services/background
+_service.dart:47:7: 
+Error: No named 
+parameter with the 
+name 
+'notificationOptions'.
+      
+notificationOptions: 
+const 
+NotificationOptions(
+      
+^^^^^^^^^^^^^^^^^^^
+/C:/Users/pvajs/AppData
+/Local/Pub/Cache/hosted
+/pub.dev/flutter_foregr
+ound_task-6.5.0/lib/flu
+tter_foreground_task.da
+rt:60:15: Context: 
+Found this candidate, 
+but the arguments 
+don't match.
+  static void init({
+              ^^^^
+Unhandled exception:
+FileSystemException(uri
+=org-dartlang-untransla
+table-uri:package%3Alog
+ging%2Flogging.dart; me
+ssage=StandardFileSyste
+m only supports file:* 
+and data:* URIs)
+#0      StandardFileSys
+tem.entityForUri (packa
+ge:front_end/src/api_pr
+ototype/standard_file_s
+ystem.dart:45)
+#1      asFileUri (pack
+age:vm/kernel_front_end
+.dart:820)
+#2      writeDepfile (p
+ackage:vm/kernel_front_
+end.dart:960)
+<asynchronous 
+suspension>
+#3      FrontendCompile
+r.compile (package:fron
+tend_server/frontend_se
+rver.dart:712)
+<asynchronous 
+suspension>
+#4      starter (packag
+e:frontend_server/start
+er.dart:109)
+<asynchronous 
+suspension>
+#5      main (file:///C
+:/b/s/w/ir/x/w/sdk/pkg/
+frontend_server/bin/fro
+ntend_server_starter.da
+rt:13)
+<asynchronous 
+suspension>
+
+Target kernel_snapshot_
+program failed: 
+Exception
+
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task ':app:compileFlutt
+erBuildRelease'.
+> Process 'command 'A:\
+flutter\bin\flutter.bat
+'' finished with 
+non-zero exit value 1
+
+* Try:
+> Run with 
+--stacktrace option to 
+get the stack trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at http
+s://help.gradle.org.
+
+BUILD FAILED in 1m 50s
+Running Gradle task 'assembleRelease'...                          112.5s
+Gradle task 
+assembleRelease failed 
+with exit code 1

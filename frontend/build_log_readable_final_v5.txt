@@ -1,0 +1,111 @@
+﻿
+Running Gradle task 'assembleRelease'...                        
+flutter : lib/services/
+vision_service.dart:9:1
+7: Error: Type 'File' 
+not found.
+At line:1 char:18
++ flutter pub get; 
+flutter build apk > bui
+ld_log_attempt10.txt 
+2>&1
++                  ~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (lib/services/   
+ vi...ile' not foun    
+d.:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+  static Future<File?> 
+captureScreen(Screensho
+tController 
+controller) async {
+                ^^^^
+lib/services/vision_ser
+vice.dart:25:17: 
+Error: Type 'File' not 
+found.
+  static Future<File?> 
+captureCameraFrame() 
+async {
+                ^^^^
+lib/services/vision_ser
+vice.dart:33:17: 
+Error: Type 'File' not 
+found.
+  static Future<File> s
+aveTempImage(List<int> 
+bytes) async {
+                ^^^^
+lib/screens/chat_screen
+.dart:114:51: Error: 
+Too few positional 
+arguments: 1 required, 
+0 given.
+    final file = await 
+VisionService.captureSc
+reen();
+                       
+                       
+    ^
+lib/services/vision_ser
+vice.dart:9:24: 
+Context: Found this 
+candidate, but the 
+arguments don't match.
+  static Future<File?> 
+captureScreen(Screensho
+tController 
+controller) async {
+                       
+^^^^^^^^^^^^^
+lib/services/vision_ser
+vice.dart:35:18: 
+Error: Method not 
+found: 'File'.
+    final file = File('
+${tempDir.path}/callist
+a_vision_${DateTime.now
+().millisecondsSinceEpo
+ch}.jpg');
+                 ^^^^
+Target kernel_snapshot_
+program failed: 
+Exception
+
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task ':app:compileFlutt
+erBuildRelease'.
+> Process 'command 'A:\
+flutter\bin\flutter.bat
+'' finished with 
+non-zero exit value 1
+
+* Try:
+> Run with 
+--stacktrace option to 
+get the stack trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at http
+s://help.gradle.org.
+
+BUILD FAILED in 39s
+Running Gradle task 'assembleRelease'...                           40.8s
+Gradle task 
+assembleRelease failed 
+with exit code 1
