@@ -33,13 +33,19 @@ from app.services import insight_service
 
 async def _keep_alive_ping():
     """Background task to ping the server every 10 minutes to prevent Render sleep."""
+    import os
     while True:
         try:
             await asyncio.sleep(600)  # 10 minutes
-            url = f"http://127.0.0.1:8000/api/ping"
+            
+            # If RENDER_EXTERNAL_URL is available (Render sets this), hit the external URL.
+            # Otherwise, fallback to localhost. Hitting external URL routes traffic through proxy and resets sleep timer.
+            base_url = os.environ.get("RENDER_EXTERNAL_URL", "http://127.0.0.1:8000")
+            url = f"{base_url}/api/ping"
+            
             async with httpx.AsyncClient() as client:
                 await client.get(url)
-            logger.debug("Keep-alive ping sent.")
+            logger.debug(f"Keep-alive ping sent to {url}")
         except Exception as e:
             logger.debug(f"Keep-alive ping failed: {e}")
 
