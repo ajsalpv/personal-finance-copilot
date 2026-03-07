@@ -1,0 +1,43 @@
+# ==============================
+# Nova AI Life Assistant — Python Dependencies
+# ==============================
+
+# --- Web Framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# --- Database ---
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+supabase==2.11.0
+
+# --- Authentication ---
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1
+
+# --- Encryption ---
+pycryptodome==3.21.0
+
+# --- Config ---
+pydantic-settings==2.7.0
+pydantic[email]==2.10.3
+python-dotenv==1.0.1
+
+# --- Telegram Bot ---
+python-telegram-bot==21.9
+
+# --- Voice Authentication ---
+# resemblyzer requires webrtcvad which needs C++ build tools
+# Install separately: pip install resemblyzer
+# Or install C++ build tools first: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+soundfile==0.12.1
+
+# --- AI / LLM (ready for Phase 2) ---
+langchain==0.3.13
+langchain-groq==0.2.4
+
+# --- Utilities ---
+python-multipart==0.0.20
+httpx==0.28.1
+numpy==2.2.1
