@@ -54,12 +54,27 @@ class AssistantService {
             await _controlDevice(parts[1], parts[2]);
           }
           break;
+        case 'ANSWER_CALL':
+          await _answerCallWithCallista();
+          break;
+        case 'SCAN_SCREEN':
+          await _scanCurrentScreen();
+          break;
         default:
           _logger.warning('Unknown assistant command: $action');
       }
     } catch (e) {
       _logger.severe('Error executing assistant command $action: $e');
     }
+  }
+
+  static Future<void> _answerCallWithCallista() async {
+    _logger.info("Callista is taking over the call...");
+    // This would transition to a CallScreen or background concierge service
+  }
+
+  static Future<void> _scanCurrentScreen() async {
+    _logger.info("Callista is scanning the screen...");
   }
 
   static Future<void> _controlDevice(String feature, String action) async {

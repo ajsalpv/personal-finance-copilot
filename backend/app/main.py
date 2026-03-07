@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.routers import (
     auth, transactions, categories, budgets,
-    tasks, memories, timeline, files, export, notifications, chat
+    tasks, memories, timeline, files, export, notifications, chat, vision
 )
 from app.telegram.bot import start_bot, stop_bot
 
@@ -147,6 +147,7 @@ app.include_router(timeline.router)
 app.include_router(files.router)
 app.include_router(export.router)
 app.include_router(notifications.router)
+app.include_router(vision.router)
 
 @app.get("/api/ping", tags=["health"])
 async def ping_endpoint():

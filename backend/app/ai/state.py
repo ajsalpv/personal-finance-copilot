@@ -11,5 +11,7 @@ class AgentState(TypedDict):
     - last_active_time: Timestamp for the 30-sec idle timeout.
     """
     messages: Annotated[List[AnyMessage], operator.add]
+    user_id: str
+    memory_context: str
     is_active: bool
     last_active_time: float

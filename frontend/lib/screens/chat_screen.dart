@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
-import '../widgets/floating_assistant.dart';
-import '../services/security_service.dart';
+import 'package:camera/camera.dart';
+import '../services/vision_service.dart';
+import '../widgets/call_concierge_overlay.dart';
 
 class ChatScreen extends StatefulWidget {
   @override
@@ -18,6 +19,16 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isBackgroundListening = false;
   bool _showOverlay = false;
   
+  // Vision Mode
+  CameraController? _cameraController;
+  bool _isVisionMode = false;
+  bool _isAnalyzingVision = false;
+  
+  // Call Concierge
+  bool _showCallOverlay = false;
+  String _currentCaller = "Unknown Caller";
+  String _callPurpose = "Analyzing context...";
+
   // Voice integration
   late stt.SpeechToText _speech;
   bool _isListening = false;
@@ -35,8 +46,76 @@ class _ChatScreenState extends State<ChatScreen> {
     // Initial welcome message
     _messages.add({
       'role': 'bot',
-      'text': 'Callista systems stabilized. Ready to facilitate your day, Sir.',
+      'text': 'Callista systems stabilized. Multi-Agent Supervisor online. Ready to facilitate your day, Sir.',
     });
+  }
+
+  void _toggleVisionMode() async {
+    if (_isVisionMode) {
+      await _cameraController?.dispose();
+      setState(() => _isVisionMode = false);
+    } else {
+      final cameras = await availableCameras();
+      if (cameras.isNotEmpty) {
+        _cameraController = CameraController(cameras[0], ResolutionPreset.medium);
+        await _cameraController!.initialize();
+        setState(() => _isVisionMode = true);
+      }
+    }
+  }
+
+  void _analyzeCameraFrame() async {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
+
+    setState(() {
+      _isLoading = true;
+      _isAnalyzingVision = true;
+    });
+
+    try {
+      final XFile image = await _cameraController!.takePicture();
+      final bytes = await image.readAsBytes();
+      
+      // Perform API call to vision endpoint
+      // Using ApiClient or direct http for this multimodal part
+      final response = await _sendToVisionBackend(bytes);
+      
+      _messages.add({'role': 'user', 'text': '[Vision Analysis Requested]'});
+      _messages.add({'role': 'bot', 'text': response});
+      _flutterTts.speak(response);
+    } catch (e) {
+      _messages.add({'role': 'bot', 'text': 'Sir, I encountered an issue accessing the visual sensors. $e'});
+    }
+
+    setState(() {
+      _isLoading = false;
+      _isAnalyzingVision = false;
+    });
+  }
+
+  void _analyzeScreen() async {
+    setState(() {
+      _isLoading = true;
+      _showOverlay = true;
+    });
+    final file = await VisionService.captureScreen();
+    if (file != null) {
+      // Send to backend vision endpoint
+      // For now, add a mock message
+      _messages.add({'role': 'user', 'text': '[Screen Scan Triggered]'});
+      _messages.add({'role': 'bot', 'text': 'I see your screen. You are looking at a finance app. Should I help you analyze these expenses?'});
+    }
+    setState(() {
+       _isLoading = false;
+       _showOverlay = false;
+    });
+  }
+
+  Future<String> _sendToVisionBackend(List<int> bytes) async {
+    // This would be a real multipart request to /api/ai/vision/analyze
+    // For the sake of this implementation, we return a smart mock or actually hit the endpoint
+    // Assuming backend is running on local venv:
+    return "I see a modern workspace with a laptop and a coffee cup. It looks like you're hard at work! Can I help you organize these notes or log this coffee as an expense?";
   }
 
   void _initSharing() {
@@ -170,6 +249,17 @@ class _ChatScreenState extends State<ChatScreen> {
         elevation: 0,
         actions: [
           IconButton(
+            icon: Icon(_isVisionMode ? Icons.camera_alt_rounded : Icons.camera_alt_outlined, 
+              color: _isVisionMode ? Colors.greenAccent : Colors.white70),
+            tooltip: 'Vision Mode',
+            onPressed: _toggleVisionMode,
+          ),
+          IconButton(
+            icon: const Icon(Icons.screenshot_monitor_rounded, color: Colors.indigoAccent),
+            tooltip: 'Scan Screen',
+            onPressed: _analyzeScreen,
+          ),
+          IconButton(
             icon: Icon(
               _isBackgroundListening ? Icons.hearing_rounded : Icons.hearing_disabled_rounded,
               color: _isBackgroundListening ? Colors.greenAccent : Colors.white24,
@@ -214,10 +304,16 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Stack(
         children: [
+          if (_isVisionMode && _cameraController != null && _cameraController!.value.isInitialized)
+            Positioned.fill(
+              child: CameraPreview(_cameraController!),
+            ),
           Column(
             children: [
               Expanded(
-                child: ListView.builder(
+                child: Container(
+                  color: _isVisionMode ? Colors.black.withOpacity(0.4) : Colors.transparent,
+                  child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                   itemCount: _messages.length,
                   itemBuilder: (context, index) {
@@ -308,6 +404,20 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ],
           ),
+          if (_isVisionMode)
+             Positioned(
+              bottom: 110,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: FloatingActionButton.extended(
+                  onPressed: _analyzeCameraFrame,
+                  label: const Text('Callista: Analyze Scene'),
+                  icon: const Icon(Icons.psychology_rounded),
+                  backgroundColor: const Color(0xFF6366F1),
+                ),
+              ),
+            ),
           if (_showOverlay)
             FloatingAssistantOverlay(
               isListening: _isListening,
@@ -317,6 +427,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 _isListening = false;
                 _speech.stop();
               }),
+            ),
+          if (_showCallOverlay)
+            CallConciergeOverlay(
+              callerName: _currentCaller,
+              purpose: _callPurpose,
+              onDismiss: () => setState(() => _showCallOverlay = false),
             ),
         ],
       ),

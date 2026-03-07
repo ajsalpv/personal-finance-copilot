@@ -12,6 +12,7 @@ subprojects {
         val extension = project.extensions.findByName("android")
         if (extension != null && extension is com.android.build.gradle.BaseExtension) {
             extension.defaultConfig.minSdk = 24
+            extension.defaultConfig.targetSdk = 35
         }
     }
 }

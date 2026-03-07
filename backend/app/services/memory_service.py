@@ -112,8 +112,7 @@ async def delete_memory(db: AsyncSession, user_id: str, memory_id: str) -> bool:
 
 async def search_memories(db: AsyncSession, user_id: str, query: str, limit: int = 5) -> List[dict]:
     """
-    Search memories by keyword match (Phase 1).
-    In Phase 2+, this will use pgvector for semantic search.
+    Search memories by keyword match.
     """
     result = await db.execute(
         text("""
@@ -122,11 +121,10 @@ async def search_memories(db: AsyncSession, user_id: str, query: str, limit: int
             ORDER BY importance_score DESC, created_at DESC
             LIMIT :limit
         """),
-        {"user_id": user_id, "limit": limit * 3},  # Fetch more, filter after decrypt
+        {"user_id": user_id, "limit": limit * 3},
     )
     rows = result.mappings().all()
 
-    # Decrypt and filter by keyword match
     query_lower = query.lower()
     matches = []
     for r in rows:
@@ -138,3 +136,36 @@ async def search_memories(db: AsyncSession, user_id: str, query: str, limit: int
             if len(matches) >= limit:
                 break
     return matches
+
+
+async def store_reflection(db: AsyncSession, user_id: str, fact: str, category: str = "general"):
+    """
+    Stores a persistent fact or reflection about the user.
+    """
+    enc_fact = encrypt(fact)
+    await db.execute(
+        text("""
+            INSERT INTO memories (user_id, content, type, importance_score, tags)
+            VALUES (:user_id, :content, 'fact', 10, :tags)
+        """),
+        {"user_id": user_id, "content": enc_fact, "tags": [category]},
+    )
+    await db.commit()
+
+
+async def get_long_term_memory(db: AsyncSession, user_id: str) -> str:
+    """
+    Retrieves all stored facts for memory pre-processing.
+    """
+    result = await db.execute(
+        text("SELECT content, tags FROM memories WHERE user_id = :user_id AND type = 'fact'"),
+        {"user_id": user_id},
+    )
+    rows = result.mappings().all()
+    facts = []
+    for r in rows:
+        content = decrypt(r["content"])
+        category = r["tags"][0] if r["tags"] else "General"
+        facts.append(f"- [{category}]: {content}")
+    
+    return "\n".join(facts) if facts else "No long-term memories found yet."
