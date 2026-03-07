@@ -179,6 +179,28 @@ async def get_spending_summary(
     }
 
 
+async def get_daily_spending(
+    db: AsyncSession, user_id: str, days: int = 30
+) -> List[dict]:
+    """Get daily spending totals for the last N days."""
+    result = await db.execute(
+        text("""
+            SELECT 
+                DATE(date) as day,
+                SUM(amount) as total
+            FROM transactions 
+            WHERE user_id = :user_id 
+              AND transaction_type = 'expense'
+              AND date >= CURRENT_DATE - INTERVAL '1 day' * :days
+            GROUP BY DATE(date)
+            ORDER BY day ASC
+        """),
+        {"user_id": user_id, "days": days},
+    )
+    rows = result.fetchall()
+    return [{"date": str(r[0]), "amount": float(r[1])} for r in rows]
+
+
 def _decrypt_transaction(row: dict) -> dict:
     """Decrypt sensitive fields in a transaction row."""
     if row.get("merchant_name"):

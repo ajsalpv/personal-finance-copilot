@@ -68,4 +68,17 @@ class ApiClient {
       throw Exception('Failed to send message: ${response.statusCode}');
     }
   }
+
+  // --- Transactions / Stats ---
+  static Future<List<dynamic>> getDailyStats({int days = 30}) async {
+    final url = Uri.parse('$baseUrl/transactions/stats/daily?days=$days');
+    final headers = await _getHeaders();
+    
+    final response = await http.get(url, headers: headers);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to get stats: ${response.statusCode}');
+    }
+  }
 }

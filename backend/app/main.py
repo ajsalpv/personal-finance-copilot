@@ -29,17 +29,20 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 import asyncio
 import httpx
+import os
+from datetime import datetime, timezone
+from sqlalchemy import text
+
+from app.database import async_session_factory
 from app.services import insight_service
 
 async def _keep_alive_ping():
     """Background task to ping the server every 10 minutes to prevent Render sleep."""
-    import os
     while True:
         try:
             await asyncio.sleep(600)  # 10 minutes
             
             # If RENDER_EXTERNAL_URL is available (Render sets this), hit the external URL.
-            # Otherwise, fallback to localhost. Hitting external URL routes traffic through proxy and resets sleep timer.
             base_url = os.environ.get("RENDER_EXTERNAL_URL", "http://127.0.0.1:8000")
             url = f"{base_url}/api/ping"
             
@@ -54,14 +57,7 @@ async def _background_scheduler():
     logger.info("⏱️ Background scheduler started")
     while True:
         try:
-            # We run this loop once per hour, but can trigger logic based on time
-            from app.database import async_session_factory
-            from sqlalchemy import text
-            
             now = datetime.now(timezone.utc)
-            
-            # Simple simulation: we will just run anomaly detection every 12 hours
-            # In production, check `if now.hour == 9:` for specific local time triggers
             
             # Get all user IDs
             async with async_session_factory() as db:

@@ -105,6 +105,20 @@ async def get_summary(
     )
 
 
+@router.get("/stats/daily")
+async def get_daily_stats(
+    days: int = Query(30, ge=1, le=90),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get daily spending trends for the last N days."""
+    return await transaction_service.get_daily_spending(
+        db=db,
+        user_id=str(current_user["id"]),
+        days=days,
+    )
+
+
 @router.get("/{txn_id}", response_model=TransactionResponse)
 async def get_transaction(
     txn_id: str,

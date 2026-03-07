@@ -225,6 +225,80 @@ async def get_financial_advice(config: RunnableConfig = None) -> str:
         logger.error(f"Error getting financial advice: {e}")
         return "Sorry, I couldn't generate financial advice at the moment."
 
+@tool
+async def make_call(phone_number: str, contact_name: Optional[str] = None) -> str:
+    """
+    Triggers a phone call to a specific number or contact.
+    Required argument: phone_number (str).
+    Optional: contact_name (str).
+    Use this when the user says "call X" or "phone Y".
+    """
+    return f"COMMAND:CALL|{phone_number}|{contact_name or ''}"
+
+@tool
+async def send_sms(phone_number: str, message: str) -> str:
+    """
+    Triggers sending an SMS/message to a phone number.
+    Required arguments: phone_number (str), message (str).
+    Use this when the user says "message X that I'm running late".
+    """
+    return f"COMMAND:SMS|{phone_number}|{message}"
+
+@tool
+async def send_email(recipient: str, subject: str, body: str) -> str:
+    """
+    Triggers sending an email.
+    Required arguments: recipient (str), subject (str), body (str).
+    Use this when the user says "email X about the meeting".
+    """
+    return f"COMMAND:EMAIL|{recipient}|{subject}|{body}"
+
+@tool
+async def open_maps(location: str) -> str:
+    """
+    Opens Google Maps for navigation or searching a location.
+    Required argument: location (str).
+    Use this when the user says "where is X" or "take me to Y" or "open maps for Z".
+    """
+    return f"COMMAND:MAPS|{location}"
+
+@tool
+async def search_contacts(query: str) -> str:
+    """
+    Searches the phone's contact list for a specific name or detail.
+    Required argument: query (str).
+    Use this when the user says "find X's number" or "who is Y".
+    """
+    return f"COMMAND:SEARCH_CONTACTS|{query}"
+
+@tool
+async def add_calendar_event(title: str, start_time: str, location: Optional[str] = None) -> str:
+    """
+    Adds an event to the phone's calendar.
+    Required arguments: title (str), start_time (ISO format string).
+    Optional: location (str).
+    Use this when the user says "schedule a meeting at 5pm tomorrow".
+    """
+    return f"COMMAND:ADD_CALENDAR|{title}|{start_time}|{location or ''}"
+
+@tool
+async def list_calendar_events(date: Optional[str] = None) -> str:
+    """
+    Lists calendar events for a specific date.
+    Optional argument: date (ISO format string, defaults to today).
+    Use this when the user says "what's on my schedule today?".
+    """
+    return f"COMMAND:LIST_CALENDAR|{date or ''}"
+
+@tool
+async def control_device(feature: str, action: str) -> str:
+    """
+    Controls phone hardware/settings like Flashlight, Volume, etc.
+    Required arguments: feature (str, e.g., 'flashlight', 'volume'), action (str, e.g., 'on', 'off', 'up', 'down').
+    Use this when the user says "turn on flashlight" or "mute volume".
+    """
+    return f"COMMAND:DEVICE|{feature}|{action}"
+
 # List of all available tools
 all_tools = [
     log_expense,
@@ -234,4 +308,12 @@ all_tools = [
     store_memory,
     search_memory,
     get_financial_advice,
+    make_call,
+    send_sms,
+    send_email,
+    open_maps,
+    search_contacts,
+    add_calendar_event,
+    list_calendar_events,
+    control_device,
 ]
