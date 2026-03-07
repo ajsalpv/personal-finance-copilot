@@ -28,7 +28,20 @@ logger = logging.getLogger(__name__)
 # Background Task Scheduler
 # ---------------------------------------------------------------------------
 import asyncio
+import httpx
 from app.services import insight_service
+
+async def _keep_alive_ping():
+    """Background task to ping the server every 10 minutes to prevent Render sleep."""
+    while True:
+        try:
+            await asyncio.sleep(600)  # 10 minutes
+            url = f"http://127.0.0.1:8000/api/ping"
+            async with httpx.AsyncClient() as client:
+                await client.get(url)
+            logger.debug("Keep-alive ping sent.")
+        except Exception as e:
+            logger.debug(f"Keep-alive ping failed: {e}")
 
 async def _background_scheduler():
     """Runs periodic background tasks for active users."""
@@ -66,10 +79,11 @@ async def _background_scheduler():
 # Lifespan (startup / shutdown)
 # ---------------------------------------------------------------------------
 _bg_task = None
+_keep_alive_task = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _bg_task
+    global _bg_task, _keep_alive_task
     settings = get_settings()
     logger.info(f"🚀 Starting {settings.APP_NAME}")
 
@@ -81,6 +95,7 @@ async def lifespan(app: FastAPI):
         
     # Start background scheduler
     _bg_task = asyncio.create_task(_background_scheduler())
+    _keep_alive_task = asyncio.create_task(_keep_alive_ping())
 
     yield
 
@@ -89,7 +104,8 @@ async def lifespan(app: FastAPI):
     await stop_bot()
     if _bg_task:
         _bg_task.cancel()
-
+    if _keep_alive_task:
+        _keep_alive_task.cancel()
 
 # ---------------------------------------------------------------------------
 # FastAPI app
@@ -130,11 +146,15 @@ app.include_router(files.router)
 app.include_router(export.router)
 app.include_router(notifications.router)
 
+@app.get("/api/ping", tags=["health"])
+async def ping_endpoint():
+    """Endpoint used to keep Render alive via cron-job.org or self-ping"""
+    return {"status": "ok", "message": "Callista is awake!"}
 
 # ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
-@app.get("/health", tags=["System"])
+@app.get("/health", tags=["health"])
 async def health_check():
     return {
         "status": "ok",

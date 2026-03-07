@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.database import AsyncSessionLocal
 from app.security.auth import get_current_user
 from app.schemas.user import UserResponse
 from app.ai.agent import process_message

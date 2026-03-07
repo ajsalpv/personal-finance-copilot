@@ -12,7 +12,7 @@ from langchain_core.runnables.config import RunnableConfig
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from app.database import AsyncSessionLocal
+from app.database import async_session_factory
 from app.config import get_settings
 from app.services import transaction_service, task_service, memory_service, budget_service
 
@@ -42,7 +42,7 @@ async def log_expense(
         return "Error: User context not found."
     
     try:
-        async with AsyncSessionLocal() as db:
+        async with async_session_factory() as db:
             txn = await transaction_service.create_transaction(
                 db=db, 
                 user_id=user_id, 
@@ -72,7 +72,7 @@ async def log_income(
         return "Error: User context not found."
     
     try:
-        async with AsyncSessionLocal() as db:
+        async with async_session_factory() as db:
             txn = await transaction_service.create_transaction(
                 db=db, 
                 user_id=user_id, 
@@ -101,7 +101,7 @@ async def get_balance_summary(config: RunnableConfig = None) -> str:
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
     try:
-        async with AsyncSessionLocal() as db:
+        async with async_session_factory() as db:
             summary = await transaction_service.get_spending_summary(
                 db, user_id, month_start, now
             )
@@ -128,7 +128,7 @@ async def add_task(title: str, config: RunnableConfig = None) -> str:
         return "Error: User context not found."
     
     try:
-        async with AsyncSessionLocal() as db:
+        async with async_session_factory() as db:
             await task_service.create_task(db=db, user_id=user_id, title=title)
         return f"Successfully created task: '{title}'."
     except Exception as e:
@@ -147,7 +147,7 @@ async def store_memory(content: str, config: RunnableConfig = None) -> str:
         return "Error: User context not found."
     
     try:
-        async with AsyncSessionLocal() as db:
+        async with async_session_factory() as db:
             await memory_service.create_memory(db=db, user_id=user_id, content=content)
         return f"Successfully remembered: '{content}'."
     except Exception as e:
@@ -166,7 +166,7 @@ async def search_memory(query: str, config: RunnableConfig = None) -> str:
         return "Error: User context not found."
     
     try:
-        async with AsyncSessionLocal() as db:
+        async with async_session_factory() as db:
             results = await memory_service.search_memories(db, user_id, query, limit=3)
             
         if not results:
@@ -192,7 +192,7 @@ async def get_financial_advice(config: RunnableConfig = None) -> str:
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
     try:
-        async with AsyncSessionLocal() as db:
+        async with async_session_factory() as db:
             summary = await transaction_service.get_spending_summary(db, user_id, month_start, now)
             statuses = await budget_service.get_budget_status(db, user_id)
             
