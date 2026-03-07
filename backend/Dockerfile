@@ -14,8 +14,12 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements file (using wildcard to handle potential context path variations)
-COPY *requirements.txt ./
+# Copy requirements file
+# If this fails, check Render "Docker Build Context" setting
+COPY requirements.txt .
+
+# Debug: list files to ensure requirements.txt is here
+RUN ls -la
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
