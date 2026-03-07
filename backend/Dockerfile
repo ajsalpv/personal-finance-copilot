@@ -20,7 +20,7 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
+# Copy everything from the current context
 COPY . .
 
 # Expose the port (Render sets the PORT environment variable)
