@@ -13,6 +13,8 @@ from app.routers import (
     tasks, memories, timeline, files, export, notifications, chat, vision
 )
 from app.telegram.bot import start_bot, stop_bot
+from app.database import engine, async_session_factory
+from sqlalchemy import text
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -89,6 +91,25 @@ async def lifespan(app: FastAPI):
     global _bg_task, _keep_alive_task
     settings = get_settings()
     logger.info(f"🚀 Starting {settings.APP_NAME}")
+
+    # --- Run Database Migrations ---
+    try:
+        migration_path = os.path.join(os.path.dirname(__file__), "..", "migrations", "001_initial_schema.sql")
+        if os.path.exists(migration_path):
+            logger.info("📄 Applying database migrations...")
+            with open(migration_path, "r", encoding="utf-8") as f:
+                sql = f.read()
+            
+            async with engine.begin() as conn:
+                # Splitting by semicolon might be risky with triggers/functions, 
+                # but for this schema it's mostly tables. 
+                # Executing the full block is safer for postgres/asyncpg.
+                await conn.execute(text(sql))
+            logger.info("✅ Database migrations applied successfully.")
+        else:
+            logger.warning("⚠️ Migration file not found. Skipping auto-migration.")
+    except Exception as e:
+        logger.error(f"❌ Migration error: {e}")
 
     # Determine Telegram mode (Webhook for Render, Polling for Local)
     base_url = os.environ.get("RENDER_EXTERNAL_URL")
