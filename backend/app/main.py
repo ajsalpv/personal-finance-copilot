@@ -54,11 +54,12 @@ async def _keep_alive_ping():
 
 async def _background_scheduler():
     """Runs periodic background tasks for active users."""
-    logger.info("⏱️ Background scheduler started")
+    logger.info("⏱️ Background scheduler started — waiting 30s for services to warm up")
+    # Wait for container networking/DNS to stabilize before first run
+    await asyncio.sleep(30)
+    
     while True:
         try:
-            now = datetime.now(timezone.utc)
-            
             # Get all user IDs
             async with async_session_factory() as db:
                 result = await db.execute(text("SELECT id FROM users"))
@@ -72,7 +73,7 @@ async def _background_scheduler():
             logger.info("✅ Background scan complete.")
             
         except Exception as e:
-            logger.error(f"Scheduler error: {e}")
+            logger.warning(f"Scheduler cycle error (will retry in 12h): {e}")
             
         # Sleep for half a day
         await asyncio.sleep(43200)
