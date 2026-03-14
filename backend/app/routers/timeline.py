@@ -12,7 +12,7 @@ from app.security.auth import get_current_user
 from app.schemas.timeline import TimelineEventCreate, TimelineEventResponse
 from app.services import timeline_service
 
-router = APIRouter(prefix="/timeline", tags=["Timeline"])
+router = APIRouter()
 
 
 @router.get("", response_model=List[TimelineEventResponse])

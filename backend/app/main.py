@@ -2,6 +2,8 @@
 Nova AI Life Assistant — FastAPI Application Entry Point
 """
 import logging
+import os
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -159,10 +161,10 @@ settings = get_settings()
 app = FastAPI(
     title=settings.APP_NAME,
     description=(
-        "A privacy-first personal AI assistant that manages finances, tasks, "
-        "knowledge, files, and life analytics. Your own private Jarvis. 🧠"
+        "Callista — Your Private AI Life Assistant. "
+        "Hierarchical multi-agent intelligence with active memory and vision."
     ),
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -183,13 +185,13 @@ app.include_router(chat.router, prefix="/api/chat", tags=["ai-chat"])
 app.include_router(transactions.router, prefix="/api/transactions", tags=["transactions"])
 app.include_router(categories.router, prefix="/api/categories", tags=["categories"])
 app.include_router(budgets.router, prefix="/api/budgets", tags=["budgets"])
-app.include_router(tasks.router)
-app.include_router(memories.router)
-app.include_router(timeline.router)
-app.include_router(files.router)
-app.include_router(export.router)
-app.include_router(notifications.router)
-app.include_router(vision.router)
+app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
+app.include_router(memories.router, prefix="/api/memories", tags=["memories"])
+app.include_router(timeline.router, prefix="/api/timeline", tags=["timeline"])
+app.include_router(files.router, prefix="/api/files", tags=["files"])
+app.include_router(export.router, prefix="/api/export", tags=["export"])
+app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
+app.include_router(vision.router, prefix="/api/vision", tags=["vision"])
 
 @app.get("/api/ping", tags=["health"])
 async def ping_endpoint():

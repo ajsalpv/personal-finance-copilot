@@ -11,7 +11,7 @@ from app.security.auth import get_current_user
 from app.schemas.file_record import FileRecordResponse, FileUploadResponse
 from app.services import file_service
 
-router = APIRouter(prefix="/files", tags=["Files"])
+router = APIRouter()
 
 
 @router.post("/upload", response_model=FileUploadResponse)

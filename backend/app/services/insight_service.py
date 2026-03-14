@@ -35,7 +35,7 @@ async def detect_anomalies(user_id: str) -> None:
         # Check current month transactions
         month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         recent_query = text("""
-            SELECT id, amount, category, merchant_name_encrypted, date
+            SELECT id, amount, category, merchant_name, date
             FROM transactions
             WHERE user_id = :uid
               AND transaction_type = 'expense'

@@ -500,7 +500,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Future<String> _sendToVisionBackend(List<int> bytes) async {
-    return "I observe a modern workspace. I can help you log any transactions or set reminders based on what I see.";
+    try {
+      return await ApiClient.analyzeImage(bytes);
+    } catch (e) {
+      _logger.severe('Vision backend error: $e');
+      return "I encountered an error while analyzing the image. Please try again.";
+    }
   }
 
   void _initSharing() {

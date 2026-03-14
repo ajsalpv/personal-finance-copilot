@@ -38,13 +38,12 @@ class ApiClient {
   }
 
   // --- Auth ---
-  static Future<Map<String, dynamic>> login(String username, String password) async {
-    final url = Uri.parse('$baseUrl/auth/token');
-    // FastAPI OAuth2PasswordRequestForm expects form-urlencoded
+  static Future<Map<String, dynamic>> login(String email, String password) async {
+    final url = Uri.parse('$baseUrl/auth/login');
     final response = await http.post(
       url,
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: {'username': username, 'password': password},
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
     );
 
     if (response.statusCode == 200) {
@@ -52,7 +51,8 @@ class ApiClient {
       await setToken(data['access_token']);
       return data;
     } else {
-      throw Exception('Failed to login: ${response.body}');
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Login failed');
     }
   }
 
@@ -112,6 +112,31 @@ class ApiClient {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to get stats: ${response.statusCode}');
+    }
+  // --- Vision ---
+  static Future<String> analyzeImage(List<int> bytes, {String? prompt}) async {
+    final url = Uri.parse('$baseUrl/vision/analyze');
+    final token = await getToken();
+    
+    var request = http.MultipartRequest('POST', url);
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    
+    request.files.add(http.MultipartFile.fromBytes(
+      'image',
+      bytes,
+      filename: 'upload.jpg',
+    ));
+    
+    if (prompt != null) request.fields['prompt'] = prompt;
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['analysis'];
+    } else {
+      throw Exception('Vision analysis failed: ${response.statusCode}');
     }
   }
 }

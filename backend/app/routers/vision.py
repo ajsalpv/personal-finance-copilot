@@ -5,7 +5,7 @@ import logging
 import httpx
 from app.config import get_settings
 
-router = APIRouter(prefix="/ai/vision", tags=["vision"])
+router = APIRouter()
 logger = logging.getLogger(__name__)
 settings = get_settings()
 

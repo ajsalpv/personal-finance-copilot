@@ -11,7 +11,7 @@ from app.security.auth import get_current_user
 from app.schemas.memory import MemoryCreate, MemoryUpdate, MemoryResponse, MemorySearchRequest
 from app.services import memory_service
 
-router = APIRouter(prefix="/memories", tags=["Memories"])
+router = APIRouter()
 
 
 @router.post("", response_model=MemoryResponse)

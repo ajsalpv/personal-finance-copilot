@@ -12,7 +12,7 @@ from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse
 from app.services import task_service
 from app.services import timeline_service
 
-router = APIRouter(prefix="/tasks", tags=["Tasks"])
+router = APIRouter()
 
 
 @router.post("", response_model=TaskResponse)

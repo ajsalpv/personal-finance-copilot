@@ -10,7 +10,7 @@ from app.database import get_db
 from app.security.auth import get_current_user
 from app.services import notification_service
 
-router = APIRouter(prefix="/notifications", tags=["Notifications"])
+router = APIRouter()
 
 
 @router.get("")

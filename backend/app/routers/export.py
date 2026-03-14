@@ -9,7 +9,7 @@ from app.database import get_db
 from app.security.auth import get_current_user
 from app.services import export_service
 
-router = APIRouter(prefix="/export", tags=["Export"])
+router = APIRouter()
 
 
 @router.get("/transactions")
