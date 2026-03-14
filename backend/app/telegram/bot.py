@@ -31,8 +31,11 @@ logger = logging.getLogger(__name__)
 _bot_app: Application = None
 
 
-async def start_bot():
-    """Initialize and start the Telegram bot (polling mode)."""
+async def start_bot(webhook_url: str = None):
+    """
+    Initialize and start the Telegram bot.
+    If webhook_url is provided, it sets up a webhook instead of starting polling.
+    """
     global _bot_app
     settings = get_settings()
 
@@ -59,17 +62,31 @@ async def start_bot():
         filters.VOICE & owner_only_filter, voice_message_handler
     ))
 
-    # Regular text messages (natural language → AI agent in Phase 2)
+    # Regular text messages
     _bot_app.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND & owner_only_filter, text_message_handler
     ))
 
-    # Initialize and start polling
+    # Initialize the app
     await _bot_app.initialize()
     await _bot_app.start()
-    await _bot_app.updater.start_polling(drop_pending_updates=True)
 
-    logger.info("🤖 Telegram bot started successfully")
+    if webhook_url:
+        logger.info(f"🕸️ Setting up Telegram Webhook: {webhook_url}")
+        await _bot_app.bot.set_webhook(url=webhook_url, drop_pending_updates=True)
+    else:
+        logger.info("🤖 Starting Telegram Bot in Polling mode")
+        await _bot_app.updater.start_polling(drop_pending_updates=True)
+
+    logger.info("✅ Telegram bot initialized")
+
+async def handle_webhook_update(update_json: dict):
+    """Process an update received via webhook."""
+    global _bot_app
+    if _bot_app:
+        from telegram import Update
+        update = Update.de_json(update_json, _bot_app.bot)
+        await _bot_app.process_update(update)
 
 
 async def stop_bot():

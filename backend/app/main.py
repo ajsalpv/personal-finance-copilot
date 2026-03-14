@@ -89,9 +89,14 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info(f"🚀 Starting {settings.APP_NAME}")
 
+    # Determine Telegram mode (Webhook for Render, Polling for Local)
+    base_url = os.environ.get("RENDER_EXTERNAL_URL")
+    webhook_url = f"{base_url}/api/telegram/webhook" if base_url else None
+
     # Start Telegram bot
     try:
-        await start_bot()
+        from app.telegram.bot import start_bot, stop_bot
+        await start_bot(webhook_url=webhook_url)
     except Exception as e:
         logger.error(f"Failed to start Telegram bot: {e}")
         
@@ -103,6 +108,7 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("🛑 Shutting down...")
+    from app.telegram.bot import stop_bot
     await stop_bot()
     if _bg_task:
         _bg_task.cancel()

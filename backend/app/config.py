@@ -8,7 +8,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     # App
-    APP_NAME: str = "Nova AI Life Assistant"
+    APP_NAME: str = "Callista AI Assistant"
     DEBUG: bool = True
 
     # Supabase
