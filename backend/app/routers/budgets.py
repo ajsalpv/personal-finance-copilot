@@ -10,7 +10,7 @@ from app.security.auth import get_current_user
 from app.schemas.budget import BudgetCreate, BudgetUpdate, BudgetResponse, BudgetStatusResponse
 from app.services import budget_service
 
-router = APIRouter(prefix="/budgets", tags=["Budgets"])
+router = APIRouter()
 
 
 @router.post("", response_model=BudgetResponse)

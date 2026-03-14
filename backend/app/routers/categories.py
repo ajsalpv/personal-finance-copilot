@@ -10,7 +10,7 @@ from app.database import get_db
 from app.security.auth import get_current_user
 from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
 
-router = APIRouter(prefix="/categories", tags=["Categories"])
+router = APIRouter()
 
 
 @router.get("", response_model=List[CategoryResponse])

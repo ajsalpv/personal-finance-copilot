@@ -18,7 +18,7 @@ from app.schemas.user import (
     VoiceEnrollResponse, VoiceVerifyResponse,
 )
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter()
 
 
 @router.post("/register", response_model=TokenResponse)

@@ -15,7 +15,7 @@ from app.schemas.transaction import (
 from app.services import transaction_service
 from app.services import timeline_service
 
-router = APIRouter(prefix="/transactions", tags=["Transactions"])
+router = APIRouter()
 
 
 @router.post("", response_model=TransactionResponse)
