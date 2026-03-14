@@ -113,6 +113,8 @@ class ApiClient {
     } else {
       throw Exception('Failed to get stats: ${response.statusCode}');
     }
+  }
+
   // --- Vision ---
   static Future<String> analyzeImage(List<int> bytes, {String? prompt}) async {
     final url = Uri.parse('$baseUrl/vision/analyze');
