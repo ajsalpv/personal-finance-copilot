@@ -16,6 +16,7 @@ import '../widgets/visual_feedback.dart';
 import '../widgets/floating_assistant.dart';
 import 'dashboard_screen.dart';
 import 'package:logging/logging.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 final _logger = Logger('ChatScreen');
 
@@ -374,6 +375,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late Animation<double> _inputGlow;
 
   final FocusNode _inputFocus = FocusNode();
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
@@ -404,7 +406,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           'text': 'Callista systems online. Multi-Agent Supervisor active. Ready to assist you, Sir.',
         });
       });
+      _playStartupSound();
     });
+  }
+
+  void _playStartupSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('f1_beep.wav'), volume: 0.8);
+    } catch (e) {
+      debugPrint("Could not play F1 beep: $e");
+    }
   }
 
   @override
@@ -415,6 +426,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _inputFocus.dispose();
     _cameraController?.dispose();
     _flutterTts.stop();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -1122,8 +1134,7 @@ class _DrawerItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: active ? const Color(0xFF818CF8) : Colors.white.withOpacity(0.4), size: 20),
-      ),
-      title: Text(
+       title: Text(
         label,
         style: TextStyle(
           color: active ? Colors.white : Colors.white.withOpacity(0.6),

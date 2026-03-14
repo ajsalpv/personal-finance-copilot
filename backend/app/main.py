@@ -105,8 +105,6 @@ async def lifespan(app: FastAPI):
     _bg_task = asyncio.create_task(_background_scheduler())
     _keep_alive_task = asyncio.create_task(_keep_alive_ping())
 
-    yield
-
     # Send Telegram notification that server is live
     try:
         from app.telegram.bot import _bot_app
@@ -120,6 +118,8 @@ async def lifespan(app: FastAPI):
             logger.info("📱 Server-live notification sent to owner.")
     except Exception as e:
         logger.warning(f"Could not send startup notification: {e}")
+
+    yield
 
     # Shutdown
     logger.info("🛑 Shutting down...")
