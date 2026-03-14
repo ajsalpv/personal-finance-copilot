@@ -404,16 +404,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           'text': 'Callista systems online. Multi-Agent Supervisor active. Ready to assist you, Sir.',
         });
       });
-      _playStartupSound();
     });
-  }
-
-  void _playStartupSound() async {
-    try {
-      await _audioPlayer.play(AssetSource('f1_beep.wav'), volume: 0.8);
-    } catch (e) {
-      debugPrint("Could not play F1 beep: $e");
-    }
   }
 
   @override
@@ -1131,7 +1122,8 @@ class _DrawerItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: active ? const Color(0xFF818CF8) : Colors.white.withOpacity(0.4), size: 20),
-       title: Text(
+      ),
+      title: Text(
         label,
         style: TextStyle(
           color: active ? Colors.white : Colors.white.withOpacity(0.6),

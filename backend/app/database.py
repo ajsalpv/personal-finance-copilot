@@ -11,7 +11,7 @@ settings = get_settings()
 # Async SQLAlchemy engine (for direct PostgreSQL queries)
 # ---------------------------------------------------------------------------
 # Convert postgres:// to postgresql+asyncpg://
-_db_url = settings.DATABASE_URL
+_db_url = settings.DATABASE_URL.strip()
 if _db_url.startswith("postgres://"):
     _db_url = _db_url.replace("postgres://", "postgresql+asyncpg://", 1)
 elif _db_url.startswith("postgresql://"):
