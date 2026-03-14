@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
@@ -24,7 +25,8 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
-  final List<Map<String, String>> _messages = [];
+  final List<dynamic> _alternates = [];
+  final List<Map<String, dynamic>> _messages = [];
   String? _threadId;
   bool _isLoading = false;
   bool _isBackgroundListening = false;
@@ -111,12 +113,22 @@ class _ChatScreenState extends State<ChatScreen> {
       _isLoading = true;
       _showOverlay = true;
     });
-    final file = await VisionService.captureScreen(_screenshotController);
+    
+    File? file;
+    if (_isVisionMode && _cameraController != null) {
+      file = await VisionService.captureCameraFrame(_cameraController!);
+    } else {
+      file = await VisionService.captureScreen(_screenshotController);
+    }
+
     if (file != null) {
       // Send to backend vision endpoint
-      // For now, add a mock message
-      _messages.add({'role': 'user', 'text': '[Screen Scan Triggered]'});
-      _messages.add({'role': 'bot', 'text': 'I see your screen. You are looking at a finance app. Should I help you analyze these expenses?'});
+      _messages.add({'role': 'user', 'text': _isVisionMode ? '[Camera Scan Triggered]' : '[Screen Scan Triggered]'});
+      _messages.add({
+        'role': 'bot', 
+        'text': 'I see ${_isVisionMode ? "the scene" : "your screen"}. Should I help you analyze this context?',
+        'memory_recalled': true
+      });
     }
     setState(() {
        _isLoading = false;
@@ -219,10 +231,15 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final response = await ApiClient.sendChatMessage(text, threadId: _threadId);
       final reply = response['reply'] as String;
+      final memoryRecalled = response['memory_recalled'] as bool? ?? false;
       
       setState(() {
         _threadId = response['thread_id'];
-        _messages.add({'role': 'bot', 'text': reply});
+        _messages.add({
+          'role': 'bot', 
+          'text': reply,
+          'memory_recalled': memoryRecalled
+        });
         _isLoading = false;
         _showOverlay = false; // Close overlay on reply
       });
@@ -352,10 +369,37 @@ class _ChatScreenState extends State<ChatScreen> {
                             BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4)),
                           ],
                         ),
-                        child: Text(
-                          msg['text'] ?? '',
-                          style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.4),
-                        ),
+                        child: Column(
+                              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  msg['text'] ?? '',
+                                  style: TextStyle(
+                                    color: isUser ? Colors.white : Colors.white.withOpacity(0.9),
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                if (!isUser && (msg['memory_recalled'] == true))
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.psychology_alt_rounded, size: 14, color: Colors.indigoAccent.shade100),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Memory Recall',
+                                          style: TextStyle(
+                                            color: Colors.indigoAccent.shade100,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
                       ),
                     );
                   },

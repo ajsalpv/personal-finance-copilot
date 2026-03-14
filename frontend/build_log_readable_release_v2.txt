@@ -1,0 +1,87 @@
+﻿
+Running Gradle task 'assembleRelease'...                        
+flutter : lib/services/
+vision_service.dart:25:
+43: Error: Type 
+'CameraController' not 
+found.
+At line:1 char:59
++ ... er pub get; 
+flutter build apk 
+--release > build_log_P
+HASE11_FINAL_V3. ...
++                 ~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (lib/services/   
+ vi...ler' not foun    
+d.:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+  static Future<File?> 
+captureCameraFrame(Came
+raController 
+controller) async {
+                       
+                   
+^^^^^^^^^^^^^^^^
+lib/services/vision_ser
+vice.dart:25:43: 
+Error: 
+'CameraController' 
+isn't a type.
+  static Future<File?> 
+captureCameraFrame(Came
+raController 
+controller) async {
+                       
+                   
+^^^^^^^^^^^^^^^^
+lib/services/vision_ser
+vice.dart:28:13: 
+Error: 'XFile' isn't a 
+type.
+      final XFile 
+image = await controlle
+r.takePicture();
+            ^^^^^
+Target kernel_snapshot_
+program failed: 
+Exception
+
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task ':app:compileFlutt
+erBuildRelease'.
+> Process 'command 'A:\
+flutter\bin\flutter.bat
+'' finished with 
+non-zero exit value 1
+
+* Try:
+> Run with 
+--stacktrace option to 
+get the stack trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at http
+s://help.gradle.org.
+
+BUILD FAILED in 47s
+Running Gradle task 'assembleRelease'...                           47.8s
+Gradle task 
+assembleRelease failed 
+with exit code 1

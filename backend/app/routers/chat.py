@@ -15,6 +15,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     thread_id: str
+    memory_recalled: bool = False
 
 @router.post("/message", response_model=ChatResponse)
 async def chat_with_callista(
@@ -30,12 +31,16 @@ async def chat_with_callista(
     user_id = str(current_user.id)
     
     try:
-        reply = await process_message(
+        agent_result = await process_message(
             thread_id=thread_id,
             user_id=user_id,
             message=payload.message
         )
-        return ChatResponse(reply=reply, thread_id=thread_id)
+        return ChatResponse(
+            reply=agent_result["reply"], 
+            thread_id=thread_id,
+            memory_recalled=agent_result["memory_recalled"]
+        )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Agent Error: {str(e)}")

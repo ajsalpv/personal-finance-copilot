@@ -101,6 +101,8 @@ async def memory_entry(state: AgentState):
 
 # --- GRAPH DEFINITION ---
 
+workflow = StateGraph(AgentState)
+
 workflow.add_node("memory_entry", memory_entry)
 workflow.add_node("supervisor", supervisor)
 workflow.add_node("call", call_specialist)
@@ -137,7 +139,7 @@ from langgraph.checkpoint.memory import MemorySaver
 memory = MemorySaver()
 agent_executor = workflow.compile(checkpointer=memory)
 
-async def process_message(thread_id: str, user_id: str, message: str) -> str:
+async def process_message(thread_id: str, user_id: str, message: str) -> dict:
     config = {"configurable": {"thread_id": thread_id}}
     result = await agent_executor.ainvoke(
         {
@@ -149,5 +151,12 @@ async def process_message(thread_id: str, user_id: str, message: str) -> str:
         },
         config=config,
     )
-    return result["messages"][-1].content
+    
+    # Check if memory was recalled (context wasn't empty)
+    memory_recalled = bool(result.get("memory_context") and result["memory_context"].strip())
+    
+    return {
+        "reply": result["messages"][-1].content,
+        "memory_recalled": memory_recalled
+    }
 

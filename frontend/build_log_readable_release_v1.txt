@@ -1,0 +1,79 @@
+﻿
+Running Gradle task 'assembleRelease'...                        
+flutter : 
+At line:1 char:18
++ ... er pub get; 
+flutter build apk 
+--release > build_log_F
+INAL_RELEASE.txt ...
++                 ~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (:String) [],    
+ RemoteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Gradle could not start 
+your build.
+> Cannot create 
+service of type 
+TaskExecuter using 
+method ProjectExecution
+Services.createTaskExec
+uter() as there is a 
+problem with parameter 
+#9 of type ReservedFile
+SystemLocationRegistry.
+   > Cannot create 
+service of type Reserve
+dFileSystemLocationRegi
+stry using method Proje
+ctExecutionServices.cre
+ateReservedFileLocation
+Registry() as there is 
+a problem with 
+parameter #1 of type Li
+st<ReservedFileSystemLo
+cation>.
+      > Could not 
+create service of type 
+ExecutionHistoryStore 
+using ExecutionBuildSer
+vices.createExecutionHi
+storyStore().
+         > Cannot lock 
+execution history 
+cache (A:\Personal 
+projects\Personal 
+Finance Copilot\fronten
+d\android\.gradle\8.10.
+2\executionHistory) as 
+it has already been 
+locked by this process.
+
+* Try:
+> Run with 
+--stacktrace option to 
+get the stack trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at http
+s://help.gradle.org.
+
+BUILD FAILED in 35s
+Running Gradle task 'assembleRelease'...                           35.8s
+Gradle task 
+assembleRelease failed 
+with exit code 1
