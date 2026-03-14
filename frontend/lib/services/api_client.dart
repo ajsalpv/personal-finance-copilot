@@ -46,6 +46,29 @@ class ApiClient {
     }
   }
 
+  static Future<Map<String, dynamic>> register(String name, String email, String password) async {
+    final url = Uri.parse('$baseUrl/auth/register');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'name': name, 'email': email, 'password': password}),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      await setToken(data['access_token']);
+      return data;
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Registration failed');
+    }
+  }
+
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jwt_token');
+  }
+
   // --- AI Chat ---
   static Future<Map<String, dynamic>> sendChatMessage(String message, {String? threadId}) async {
     final url = Uri.parse('$baseUrl/chat/message');

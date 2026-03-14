@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'services/background_service.dart';
+import 'services/api_client.dart';
 import 'screens/chat_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -9,11 +10,15 @@ void main() async {
   // Initialize Background Service
   AssistantBackgroundService.init();
   
-  runApp(const NovaApp());
+  // Check for existing token
+  final token = await ApiClient.getToken();
+  
+  runApp(NovaApp(isLoggedIn: token != null));
 }
 
 class NovaApp extends StatelessWidget {
-  const NovaApp({super.key});
+  final bool isLoggedIn;
+  const NovaApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +32,7 @@ class NovaApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
-      home: ChatScreen(),
+      home: isLoggedIn ? ChatScreen() : const LoginScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

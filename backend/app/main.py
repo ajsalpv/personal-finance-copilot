@@ -107,6 +107,20 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    # Send Telegram notification that server is live
+    try:
+        from app.telegram.bot import _bot_app
+        owner_id = settings.OWNER_TELEGRAM_ID
+        if _bot_app and owner_id:
+            await _bot_app.bot.send_message(
+                chat_id=owner_id,
+                text="✅ *Callista is online!*\nYour AI assistant server has started successfully and is ready to serve you.",
+                parse_mode="Markdown"
+            )
+            logger.info("📱 Server-live notification sent to owner.")
+    except Exception as e:
+        logger.warning(f"Could not send startup notification: {e}")
+
     # Shutdown
     logger.info("🛑 Shutting down...")
     from app.telegram.bot import stop_bot
