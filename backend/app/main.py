@@ -4,7 +4,7 @@ Nova AI Life Assistant — FastAPI Application Entry Point
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
@@ -174,6 +174,38 @@ app.include_router(vision.router)
 async def ping_endpoint():
     """Endpoint used to keep Render alive via cron-job.org or self-ping"""
     return {"status": "ok", "message": "Callista is awake!"}
+    
+@app.post("/api/telegram/webhook", tags=["telegram"])
+async def telegram_webhook(request: Request):
+    """Receive incoming webhook updates from Telegram."""
+    try:
+        data = await request.json()
+        from app.telegram.bot import handle_webhook_update
+        await handle_webhook_update(data)
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error handling Telegram webhook: {e}")
+        return {"status": "error"}
+
+from fastapi.responses import JSONResponse
+import socket
+from sqlalchemy.exc import OperationalError
+
+@app.exception_handler(socket.gaierror)
+async def gaierror_handler(request: Request, exc: socket.gaierror):
+    logger.error(f"DNS Resolution failed (typically bad DATABASE_URL): {exc}")
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Database connection failed. Please check the DATABASE_URL environment variable on Render for typos."},
+    )
+
+@app.exception_handler(OperationalError)
+async def sqlalchemy_op_error_handler(request: Request, exc: OperationalError):
+    logger.error(f"Database operational error: {exc}")
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Could not connect to the database. Check if the database server is running and accessible."},
+    )
 
 # ---------------------------------------------------------------------------
 # Health check

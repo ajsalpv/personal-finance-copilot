@@ -27,6 +27,16 @@ class ApiClient {
     return {'Content-Type': 'application/json'};
   }
 
+  // --- Health Check ---
+  static Future<bool> pingServer() async {
+    try {
+      final res = await http.get(Uri.parse('$baseUrl/ping')).timeout(const Duration(seconds: 4));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // --- Auth ---
   static Future<Map<String, dynamic>> login(String username, String password) async {
     final url = Uri.parse('$baseUrl/auth/token');

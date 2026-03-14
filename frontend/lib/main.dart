@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'services/background_service.dart';
 import 'services/api_client.dart';
 import 'screens/chat_screen.dart';
-import 'screens/login_screen.dart';
+import 'screens/boot_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +32,7 @@ class NovaApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
-      home: isLoggedIn ? ChatScreen() : const LoginScreen(),
+      home: BootScreen(isLoggedIn: isLoggedIn),
       debugShowCheckedModeBanner: false,
     );
   }

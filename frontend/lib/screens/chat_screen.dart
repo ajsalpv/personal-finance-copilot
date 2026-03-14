@@ -16,7 +16,6 @@ import '../widgets/visual_feedback.dart';
 import '../widgets/floating_assistant.dart';
 import 'dashboard_screen.dart';
 import 'package:logging/logging.dart';
-import 'package:audioplayers/audioplayers.dart';
 
 final _logger = Logger('ChatScreen');
 
@@ -375,7 +374,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late Animation<double> _inputGlow;
 
   final FocusNode _inputFocus = FocusNode();
-  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
@@ -426,7 +424,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _inputFocus.dispose();
     _cameraController?.dispose();
     _flutterTts.stop();
-    _audioPlayer.dispose();
     super.dispose();
   }
 
