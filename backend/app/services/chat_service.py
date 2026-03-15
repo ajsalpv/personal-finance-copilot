@@ -68,3 +68,15 @@ async def delete_chat_history(db: AsyncSession, user_id: str) -> bool:
     )
     await db.commit()
     return result.rowcount > 0
+
+async def delete_selected_messages(db: AsyncSession, user_id: str, message_ids: List[str]) -> bool:
+    """Delete specific messages by their IDs."""
+    if not message_ids:
+        return False
+        
+    result = await db.execute(
+        text("DELETE FROM chat_messages WHERE user_id = :user_id AND id = ANY(:ids::uuid[])"),
+        {"user_id": user_id, "ids": message_ids}
+    )
+    await db.commit()
+    return result.rowcount > 0

@@ -168,4 +168,22 @@ class ApiClient {
       throw Exception('Failed to clear chat history: ${response.statusCode}');
     }
   }
+
+  static Future<bool> deleteSelectedMessages(List<String> messageIds) async {
+    final url = Uri.parse('$baseUrl/chat/delete-messages');
+    final headers = await _getHeaders();
+    
+    final response = await http.post(
+      url, 
+      headers: headers,
+      body: jsonEncode({'message_ids': messageIds}),
+    );
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['success'] ?? true;
+    } else {
+      throw Exception('Failed to delete selected messages: ${response.statusCode}');
+    }
+  }
 }

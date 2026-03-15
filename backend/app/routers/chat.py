@@ -18,6 +18,8 @@ class ChatResponse(BaseModel):
     reply: str
     thread_id: str
     memory_recalled: bool = False
+    user_message_id: str
+    bot_message_id: str
 
 @router.post("/message", response_model=ChatResponse)
 async def chat_with_callista(
@@ -32,7 +34,7 @@ async def chat_with_callista(
     user_id = str(current_user["id"])
     
     # 1. Save User Message
-    await chat_service.save_chat_message(
+    user_msg = await chat_service.save_chat_message(
         db, user_id, "user", payload.message, thread_id
     )
     
@@ -48,14 +50,16 @@ async def chat_with_callista(
         memory_recalled = agent_result["memory_recalled"]
         
         # 3. Save Bot Response
-        await chat_service.save_chat_message(
+        bot_msg = await chat_service.save_chat_message(
             db, user_id, "bot", reply, thread_id, memory_recalled
         )
         
         return ChatResponse(
             reply=reply, 
             thread_id=thread_id,
-            memory_recalled=memory_recalled
+            memory_recalled=memory_recalled,
+            user_message_id=str(user_msg.id),
+            bot_message_id=str(bot_msg.id)
         )
         
     except Exception as e:
@@ -77,4 +81,15 @@ async def clear_history(
 ):
     """Delete all chat history for the user."""
     success = await chat_service.delete_chat_history(db, str(current_user["id"]))
+    return {"success": success}
+
+@router.post("/delete-messages")
+async def delete_messages(
+    payload: dict = Body(...),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete specific messages by IDs."""
+    message_ids = payload.get("message_ids", [])
+    success = await chat_service.delete_selected_messages(db, str(current_user["id"]), message_ids)
     return {"success": success}

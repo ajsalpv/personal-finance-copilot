@@ -133,7 +133,16 @@ class _OrbPainter extends CustomPainter {
 // ─────────────────────────────────────────────────────────────────────────────
 class _ChatBubble extends StatelessWidget {
   final Map<String, dynamic> msg;
-  const _ChatBubble({required this.msg});
+  final bool isSelected;
+  final VoidCallback onLongPress;
+  final VoidCallback onTap;
+
+  const _ChatBubble({
+    required this.msg,
+    this.isSelected = false,
+    required this.onLongPress,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -248,10 +257,26 @@ class _ChatBubble extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (isSelected && isUser) ...[
+                  const SizedBox(width: 8),
+                  const Icon(Icons.check_circle, color: Color(0xFF6366F1), size: 20),
+                ],
               ],
             ),
           ],
         ),
+      ),
+    );
+
+    return GestureDetector(
+      onLongPress: onLongPress,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        color: isSelected 
+            ? const Color(0xFF6366F1).withOpacity(0.12)
+            : Colors.transparent,
+        child: bubbleContent,
       ),
     );
   }
@@ -369,6 +394,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late FlutterTts _flutterTts;
   bool _isTtsEnabled = true;
 
+  // Selection Mode
+  final Set<String> _selectedMessageIds = {};
+  bool get _isSelectionMode => _selectedMessageIds.isNotEmpty;
+
   // Input bar animation
   late AnimationController _inputFocusCtrl;
   late Animation<double> _inputGlow;
@@ -411,6 +440,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           _messages.clear();
           for (var msg in history) {
             _messages.add({
+              'id': msg['id'],
               'role': msg['role'],
               'text': msg['text'],
               'memory_recalled': msg['memory_recalled'] ?? false,
@@ -467,6 +497,53 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         });
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      } finally {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _toggleSelection(String? id) {
+    if (id == null) return;
+    setState(() {
+      if (_selectedMessageIds.contains(id)) {
+        _selectedMessageIds.remove(id);
+      } else {
+        _selectedMessageIds.add(id);
+      }
+    });
+  }
+
+  void _deleteSelectedMessages() async {
+    if (_selectedMessageIds.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: Text('Delete ${_selectedMessageIds.length} messages?', style: const TextStyle(color: Colors.white)),
+        content: const Text('These messages will be permanently removed.', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final idsToDelete = _selectedMessageIds.toList();
+      setState(() => _isLoading = true);
+      try {
+        await ApiClient.deleteSelectedMessages(idsToDelete);
+        setState(() {
+          _messages.removeWhere((m) => idsToDelete.contains(m['id']));
+          _selectedMessageIds.clear();
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
       } finally {
         setState(() => _isLoading = false);
       }
@@ -654,10 +731,23 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       final response = await ApiClient.sendChatMessage(text, threadId: _threadId);
       final reply = response['reply'] as String;
       final memoryRecalled = response['memory_recalled'] as bool? ?? false;
+      final botMsgId = response['bot_message_id'] as String?;
+      final userMsgId = response['user_message_id'] as String?;
 
       setState(() {
         _threadId = response['thread_id'];
-        _messages.add({'role': 'bot', 'text': reply, 'memory_recalled': memoryRecalled});
+        
+        // Update user message with its ID
+        if (userMsgId != null) {
+          _messages.lastWhere((m) => m['role'] == 'user')['id'] = userMsgId;
+        }
+
+        _messages.add({
+          'id': botMsgId,
+          'role': 'bot', 
+          'text': reply, 
+          'memory_recalled': memoryRecalled
+        });
         _isLoading = false;
         _showOverlay = false;
       });
@@ -691,81 +781,111 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.6), blurRadius: 12)],
+        leading: _isSelectionMode
+            ? IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => setState(() => _selectedMessageIds.clear()),
+              )
+            : null,
+        title: _isSelectionMode
+            ? Text(
+                '${_selectedMessageIds.length} Selected',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.6), blurRadius: 12)],
+                    ),
+                    child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'CALLISTA',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 2.5,
+                        ),
+                      ),
+                      Text(
+                        'AI Life Assistant',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.45),
+                          fontSize: 10,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'CALLISTA',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 2.5,
-                  ),
+        actions: _isSelectionMode
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.select_all_rounded, color: Colors.white),
+                  onPressed: () {
+                    setState(() {
+                      _selectedMessageIds.clear();
+                      _selectedMessageIds.addAll(
+                        _messages.where((m) => m['id'] != null).map((m) => m['id'] as String),
+                      );
+                    });
+                  },
                 ),
-                Text(
-                  'AI Life Assistant',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.45),
-                    fontSize: 10,
-                    letterSpacing: 0.8,
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                  onPressed: _deleteSelectedMessages,
                 ),
+                const SizedBox(width: 8),
+              ]
+            : [
+                _AppBarIcon(
+                  icon: _isVisionMode ? Icons.videocam_rounded : Icons.videocam_off_rounded,
+                  active: _isVisionMode,
+                  activeColor: const Color(0xFF10B981),
+                  onTap: _toggleVisionMode,
+                ),
+                _AppBarIcon(
+                  icon: Icons.phone_in_talk_rounded,
+                  active: _showCallOverlay,
+                  activeColor: const Color(0xFF10B981),
+                  onTap: () => setState(() => _showCallOverlay = !_showCallOverlay),
+                ),
+                _AppBarIcon(
+                  icon: _isBackgroundListening ? Icons.hearing_rounded : Icons.hearing_disabled_rounded,
+                  active: _isBackgroundListening,
+                  activeColor: const Color(0xFF6366F1),
+                  onTap: _toggleBackgroundListening,
+                ),
+                _AppBarIcon(
+                  icon: _isTtsEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                  active: _isTtsEnabled,
+                  activeColor: const Color(0xFF6366F1),
+                  onTap: () => setState(() => _isTtsEnabled = !_isTtsEnabled),
+                ),
+                _AppBarIcon(
+                  icon: Icons.delete_sweep_rounded,
+                  active: false,
+                  activeColor: Colors.redAccent,
+                  onTap: _clearHistory,
+                ),
+                const SizedBox(width: 4),
               ],
-            ),
-          ],
-        ),
-        actions: [
-          _AppBarIcon(
-            icon: _isVisionMode ? Icons.videocam_rounded : Icons.videocam_off_rounded,
-            active: _isVisionMode,
-            activeColor: const Color(0xFF10B981),
-            onTap: _toggleVisionMode,
-          ),
-          _AppBarIcon(
-            icon: Icons.phone_in_talk_rounded,
-            active: _showCallOverlay,
-            activeColor: const Color(0xFF10B981),
-            onTap: () => setState(() => _showCallOverlay = !_showCallOverlay),
-          ),
-          _AppBarIcon(
-            icon: _isBackgroundListening ? Icons.hearing_rounded : Icons.hearing_disabled_rounded,
-            active: _isBackgroundListening,
-            activeColor: const Color(0xFF6366F1),
-            onTap: _toggleBackgroundListening,
-          ),
-          _AppBarIcon(
-            icon: _isTtsEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
-            active: _isTtsEnabled,
-            activeColor: const Color(0xFF6366F1),
-            onTap: () => setState(() => _isTtsEnabled = !_isTtsEnabled),
-          ),
-          _AppBarIcon(
-            icon: Icons.delete_sweep_rounded,
-            active: false,
-            activeColor: Colors.redAccent,
-            onTap: _clearHistory,
-          ),
-          const SizedBox(width: 4),
-        ],
       ),
       drawer: _buildDrawer(context),
       body: Screenshot(
@@ -807,7 +927,20 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       if (index == _messages.length && _isLoading) {
                         return const _TypingIndicator();
                       }
-                      return _ChatBubble(msg: _messages[index]);
+                      final msg = _messages[index];
+                      final id = msg['id'] as String?;
+                      final isSelected = id != null && _selectedMessageIds.contains(id);
+
+                      return _ChatBubble(
+                        msg: msg,
+                        isSelected: isSelected,
+                        onLongPress: () => _toggleSelection(id),
+                        onTap: () {
+                          if (_isSelectionMode) {
+                            _toggleSelection(id);
+                          }
+                        },
+                      );
                     },
                   ),
                 ),
