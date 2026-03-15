@@ -141,4 +141,31 @@ class ApiClient {
       throw Exception('Vision analysis failed: ${response.statusCode}');
     }
   }
+
+  // --- Chat History ---
+  static Future<List<dynamic>> getChatHistory() async {
+    final url = Uri.parse('$baseUrl/chat/history');
+    final headers = await _getHeaders();
+    
+    final response = await http.get(url, headers: headers);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['history'];
+    } else {
+      throw Exception('Failed to load chat history: ${response.statusCode}');
+    }
+  }
+
+  static Future<bool> clearChatHistory() async {
+    final url = Uri.parse('$baseUrl/chat/history');
+    final headers = await _getHeaders();
+    
+    final response = await http.delete(url, headers: headers);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['success'] ?? true;
+    } else {
+      throw Exception('Failed to clear chat history: ${response.statusCode}');
+    }
+  }
 }

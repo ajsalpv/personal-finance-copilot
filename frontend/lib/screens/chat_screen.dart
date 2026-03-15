@@ -396,15 +396,81 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       }
     });
 
-    // Initial welcome message
+    // Initial welcome message (or load history)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        _messages.add({
-          'role': 'bot',
-          'text': 'Callista systems online. Multi-Agent Supervisor active. Ready to assist you, Sir.',
-        });
-      });
+      _loadHistory();
     });
+  }
+
+  void _loadHistory() async {
+    setState(() => _isLoading = true);
+    try {
+      final history = await ApiClient.getChatHistory();
+      if (history.isNotEmpty) {
+        setState(() {
+          _messages.clear();
+          for (var msg in history) {
+            _messages.add({
+              'role': msg['role'],
+              'text': msg['text'],
+              'memory_recalled': msg['memory_recalled'] ?? false,
+            });
+          }
+          if (history.any((m) => m['thread_id'] != null)) {
+            _threadId = history.last['thread_id'];
+          }
+        });
+        _scrollToBottom();
+      } else {
+        setState(() {
+          _messages.add({
+            'role': 'bot',
+            'text': 'Callista systems online. Multi-Agent Supervisor active. Ready to assist you, Sir.',
+          });
+        });
+      }
+    } catch (e) {
+      _logger.severe('Failed to load history: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _clearHistory() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('Clear Chat?', style: TextStyle(color: Colors.white)),
+        content: const Text('This will permanently delete all messages from the server.', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isLoading = true);
+      try {
+        await ApiClient.clearChatHistory();
+        setState(() {
+          _messages.clear();
+          _threadId = null;
+          _messages.add({
+            'role': 'bot',
+            'text': 'History cleared. Systems reset. How can I help you now?',
+          });
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      } finally {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -691,6 +757,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             active: _isTtsEnabled,
             activeColor: const Color(0xFF6366F1),
             onTap: () => setState(() => _isTtsEnabled = !_isTtsEnabled),
+          ),
+          _AppBarIcon(
+            icon: Icons.delete_sweep_rounded,
+            active: false,
+            activeColor: Colors.redAccent,
+            onTap: _clearHistory,
           ),
           const SizedBox(width: 4),
         ],

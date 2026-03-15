@@ -99,6 +99,19 @@ async def memory_entry(state: AgentState):
         await extract_and_store_facts(db, user_id, last_human_msg)
     return {"memory_context": memory_context}
 
+async def self_reflection(state: AgentState):
+    """Analyzes the response and user feedback for self-improvement."""
+    user_id = state.get("user_id", "default_user")
+    last_msg = state["messages"][-1].content
+    
+    # In a real self-evolution loop, we'd use a separate LLM call to judge the response
+    # For now, we enhance the autonomous learning by checking for corrections or style preferences
+    if any(keyword in last_msg.lower() for keyword in ["don't", "stop", "never", "always", "prefer"]):
+        async with async_session_factory() as db:
+            await extract_and_store_facts(db, user_id, f"USER PREFERENCE CORRECTION: {last_msg}")
+            
+    return state
+
 # --- GRAPH DEFINITION ---
 
 workflow = StateGraph(AgentState)
@@ -109,6 +122,7 @@ workflow.add_node("call", call_specialist)
 workflow.add_node("vision", vision_expert)
 workflow.add_node("system", system_manager)
 workflow.add_node("tools", ToolNode(tools=all_tools))
+workflow.add_node("reflect", self_reflection)
 
 workflow.add_edge(START, "memory_entry")
 workflow.add_edge("memory_entry", "supervisor")
@@ -128,12 +142,13 @@ def should_continue(state: AgentState):
     last_message = messages[-1]
     if getattr(last_message, "tool_calls", None):
         return "tools"
-    return END
+    return "reflect"
 
 workflow.add_conditional_edges("system", should_continue)
 workflow.add_edge("tools", "system")
-workflow.add_edge("call", END)
-workflow.add_edge("vision", END)
+workflow.add_edge("call", "reflect")
+workflow.add_edge("vision", "reflect")
+workflow.add_edge("reflect", END)
 
 from langgraph.checkpoint.memory import MemorySaver
 memory = MemorySaver()

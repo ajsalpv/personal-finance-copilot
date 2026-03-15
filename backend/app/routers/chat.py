@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.security.auth import get_current_user
 from app.schemas.user import UserResponse
 from app.ai.agent import process_message
+from app.services import chat_service
+from app.database import get_db
 import uuid
 
 router = APIRouter()
@@ -20,27 +22,59 @@ class ChatResponse(BaseModel):
 @router.post("/message", response_model=ChatResponse)
 async def chat_with_callista(
     payload: ChatRequest = Body(...),
-    current_user: UserResponse = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Send a natural language message to the AI Agent (Callista).
-    If no thread_id is provided, a new conversational session is started.
     """
-    # Create or reuse a thread ID for LangGraph memory persistence
     thread_id = payload.thread_id if payload.thread_id else str(uuid.uuid4())
-    user_id = str(current_user.id)
+    user_id = str(current_user["id"])
+    
+    # 1. Save User Message
+    await chat_service.save_chat_message(
+        db, user_id, "user", payload.message, thread_id
+    )
     
     try:
+        # 2. Process with AI
         agent_result = await process_message(
             thread_id=thread_id,
             user_id=user_id,
             message=payload.message
         )
+        
+        reply = agent_result["reply"]
+        memory_recalled = agent_result["memory_recalled"]
+        
+        # 3. Save Bot Response
+        await chat_service.save_chat_message(
+            db, user_id, "bot", reply, thread_id, memory_recalled
+        )
+        
         return ChatResponse(
-            reply=agent_result["reply"], 
+            reply=reply, 
             thread_id=thread_id,
-            memory_recalled=agent_result["memory_recalled"]
+            memory_recalled=memory_recalled
         )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Agent Error: {str(e)}")
+
+@router.get("/history")
+async def get_history(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch stored chat history for the user."""
+    history = await chat_service.get_chat_history(db, str(current_user["id"]))
+    return {"history": history}
+
+@router.delete("/history")
+async def clear_history(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete all chat history for the user."""
+    success = await chat_service.delete_chat_history(db, str(current_user["id"]))
+    return {"success": success}

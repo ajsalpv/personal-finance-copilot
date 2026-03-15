@@ -231,3 +231,20 @@ INSERT INTO categories (id, user_id, name, type, icon, is_default) VALUES
     (uuid_generate_v4(), NULL, 'Gift', 'income', '🎁', true),
     (uuid_generate_v4(), NULL, 'Other', 'income', '📌', true)
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- CHAT MESSAGES (Persistence)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('user', 'bot')),
+    text TEXT NOT NULL,
+    thread_id TEXT,
+    memory_recalled BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_chat_messages_user ON chat_messages(user_id, created_at DESC);
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users own chat messages" ON chat_messages FOR ALL USING (user_id = auth.uid());
