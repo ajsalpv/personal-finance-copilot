@@ -45,6 +45,7 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 
-@lru_cache()
 def get_settings() -> Settings:
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
     return Settings()

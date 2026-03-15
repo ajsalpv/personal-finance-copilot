@@ -19,8 +19,10 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 
 async def _call_groq(system_prompt: str, user_prompt: str) -> str:
     """Makes a direct call to Groq API and returns the text response."""
+    current_settings = get_settings()
+    logger.info(f"Using Groq Key: {current_settings.GROQ_API_KEY[:8]}...")
     headers = {
-        "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+        "Authorization": f"Bearer {current_settings.GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
     payload = {

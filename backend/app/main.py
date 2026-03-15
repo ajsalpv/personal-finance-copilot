@@ -270,6 +270,31 @@ async def sqlalchemy_op_error_handler(request: Request, exc: OperationalError):
         content={"detail": "Could not connect to the database. Check if the database server is running and accessible."},
     )
 
+@app.get("/api/debug/env")
+async def debug_env():
+    import os, sys, hashlib
+    key = os.getenv("GROQ_API_KEY", "None")
+    
+    agent_path = os.path.join(os.getcwd(), "app", "ai", "agent.py")
+    agent_hash = "None"
+    if os.path.exists(agent_path):
+        with open(agent_path, "rb") as f:
+            agent_hash = hashlib.md5(f.read()).hexdigest()
+
+    return {
+        "cwd": os.getcwd(),
+        "agent_hash": agent_hash,
+        "key_start": key[:8],
+        "key_length": len(key),
+        "key_repr": repr(key)
+    }
+
+@app.on_event("startup")
+async def startup_event():
+    from app.config import get_settings
+    settings = get_settings()
+    print(f"--- CALLISTA STARTUP: GROQ_KEY={settings.GROQ_API_KEY[:10]}... ---")
+
 # ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------

@@ -139,6 +139,63 @@ async def add_task(title: str, config: RunnableConfig = None) -> str:
         return f"Failed to create task: {str(e)}"
 
 @tool
+async def get_tasks(status: Optional[str] = None, config: RunnableConfig = None) -> str:
+    """
+    Retrieves the user's tasks or reminders.
+    Optional argument: status (str, e.g. "pending", "completed").
+    Use this when the user asks "what are my tasks" or "do I have any reminders".
+    """
+    user_id = await _get_user_id(config)
+    if not user_id:
+        return "Error: User context not found."
+    
+    try:
+        async with async_session_factory() as db:
+            tasks = await task_service.get_tasks(db=db, user_id=user_id, status=status)
+            
+        if not tasks:
+            return "You have no tasks matching that criteria."
+            
+        result = "Your Tasks:\n"
+        for i, t in enumerate(tasks, 1):
+            stat = t.get("status", "pending")
+            result += f"{i}. [{stat}] {t.get('title')}\n"
+        return result
+    except Exception as e:
+        logger.error(f"Error getting tasks: {e}")
+        return f"Failed to retrieve tasks: {str(e)}"
+
+@tool
+async def complete_task(task_title: str, config: RunnableConfig = None) -> str:
+    """
+    Marks a task as completed based on its title matching.
+    Required argument: task_title (str).
+    Use this when the user says "I finished X" or "cross off Y".
+    """
+    user_id = await _get_user_id(config)
+    if not user_id:
+        return "Error: User context not found."
+    
+    try:
+        async with async_session_factory() as db:
+            # First find tasks matching title (simple match for now)
+            tasks = await task_service.get_tasks(db=db, user_id=user_id, status="pending")
+            matching_task = None
+            for t in tasks:
+                if task_title.lower() in t.get("title", "").lower():
+                    matching_task = t
+                    break
+                    
+            if not matching_task:
+                return f"I couldn't find a pending task matching '{task_title}'."
+                
+            await task_service.update_task(db=db, user_id=user_id, task_id=matching_task["id"], updates={"status": "completed"})
+            return f"Successfully marked task '{matching_task['title']}' as completed."
+    except Exception as e:
+        logger.error(f"Error completing task: {e}")
+        return f"Failed to complete task: {str(e)}"
+
+@tool
 async def store_memory(content: str, config: RunnableConfig = None) -> str:
     """
     Stores an important piece of information or knowledge for the user to remember.
@@ -212,9 +269,11 @@ async def get_financial_advice(config: RunnableConfig = None) -> str:
         for stat in statuses:
             context_str += f"- {stat['category']}: Spent ₹{stat['spent']:.0f} of ₹{stat['monthly_limit']:.0f}\nAI Coaching: {stat.get('ai_coaching', 'No status available.')}\n"
             
-        # Call LLM for advice
-        settings = get_settings()
-        llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=settings.GROQ_API_KEY, temperature=0.5)
+        # Call LLM for advice with forced dynamic settings
+        load_dotenv(override=True)
+        key = os.getenv("GROQ_API_KEY")
+        
+        llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=key, temperature=0.5)
         
         messages = [
             SystemMessage(content="You are a strict, smart financial advisor named Callista. Keep your advice under 4 sentences. Point out bad spending habits directly based on the data."),
@@ -401,6 +460,8 @@ all_tools = [
     log_income,
     get_balance_summary,
     add_task,
+    get_tasks,
+    complete_task,
     store_memory,
     search_memory,
     get_financial_advice,
