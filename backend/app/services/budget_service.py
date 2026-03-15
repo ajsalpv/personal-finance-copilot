@@ -80,16 +80,25 @@ async def get_budget_status(db: AsyncSession, user_id: str) -> List[dict]:
     )
     rows = result.mappings().all()
 
-    return [
-        {
-            "category": r["category"],
-            "monthly_limit": float(r["monthly_limit"]),
-            "spent": float(r["spent"]),
-            "remaining": float(r["monthly_limit"]) - float(r["spent"]),
-            "percentage_used": round(float(r["spent"]) / float(r["monthly_limit"]) * 100, 1)
-            if float(r["monthly_limit"]) > 0
-            else 0,
-            "is_over_budget": float(r["spent"]) > float(r["monthly_limit"]),
-        }
-        for r in rows
-    ]
+    from app.ai.agents.budget_agent import BudgetAdvisoryAgent
+    
+    status_list = []
+    for r in rows:
+        spent = float(r["spent"])
+        limit = float(r["monthly_limit"])
+        category = r["category"]
+        
+        # Get intelligent AI coaching
+        coaching = await BudgetAdvisoryAgent.analyze_budget_status(category, limit, spent)
+        
+        status_list.append({
+            "category": category,
+            "monthly_limit": limit,
+            "spent": spent,
+            "remaining": limit - spent,
+            "percentage_used": round(spent / limit * 100, 1) if limit > 0 else 0,
+            "is_over_budget": spent > limit,
+            "ai_coaching": coaching.strip()
+        })
+        
+    return status_list

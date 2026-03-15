@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 from langchain_core.tools import tool
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # Note: We can't inject async DB sessions directly into LangChain @tools easily
 # without wrapping them in an async tool context, but we will pass user_id via 
@@ -210,7 +210,7 @@ async def get_financial_advice(config: RunnableConfig = None) -> str:
             
         context_str += "\nBudget Status:\n"
         for stat in statuses:
-            context_str += f"- {stat['category']}: Spent ₹{stat['spent']:.0f} of ₹{stat['monthly_limit']:.0f} ({stat['percentage_used']}%)\n"
+            context_str += f"- {stat['category']}: Spent ₹{stat['spent']:.0f} of ₹{stat['monthly_limit']:.0f}\nAI Coaching: {stat.get('ai_coaching', 'No status available.')}\n"
             
         # Call LLM for advice
         settings = get_settings()
@@ -221,7 +221,7 @@ async def get_financial_advice(config: RunnableConfig = None) -> str:
             HumanMessage(content=f"Here is my financial data for this month. Give me advice:\n{context_str}")
         ]
         
-        advice = llm.invoke(messages)
+        advice = await llm.ainvoke(messages)
         return advice.content
 
     except Exception as e:
@@ -314,19 +314,28 @@ async def get_strategic_advisory(config: RunnableConfig = None) -> str:
     
     try:
         async with async_session_factory() as db:
-            # 1. Gather context (including location)
-            news = await news_intelligence.NewsIntelligenceService.fetch_global_risks()
-            mock_stats = {"top_categories": ["fuel", "groceries", "tech"]}
+            # 1. Gather dynamic context
+            now = datetime.now(timezone.utc)
+            start = now - timedelta(days=30)
+            summary = await transaction_service.get_spending_summary(db, user_id, start, now)
+            top_cats = [c["category"] for c in summary.get("by_category", [])[:5]]
             
-            # Fetch real location context if available
-            location_ctx = await location_service.LocationService.detect_travel_anomaly(db, user_id)
-            user_city = location_ctx.get("current_city") if location_ctx else "Unknown"
+            # Fetch real location context
+            location_ctx = await location_service.LocationService.get_recent_locations(db, user_id, limit=1)
+            user_city = location_ctx[0]["city"] if location_ctx else "Unknown"
+            
+            user_context = {
+                "location": user_city,
+                "top_categories": top_cats if top_cats else ["General"],
+                "current_city": user_city
+            }
             
             # 2. Pipeline processing
-            advisories = await news_intelligence.NewsIntelligenceService.analyze_impact(news, {"current_city": user_city})
-            filtered = await news_intelligence.NewsIntelligenceService.filter_relevance(advisories, mock_stats)
+            news = await news_intelligence.NewsIntelligenceService.fetch_global_risks()
+            advisories = await news_intelligence.NewsIntelligenceService.analyze_impact(news, user_context)
+            filtered = await news_intelligence.NewsIntelligenceService.filter_relevance(advisories, user_context)
             
-            # 3. Cost of Living
+            # 3. Cost of Living (dynamic)
             col_index = await news_intelligence.NewsIntelligenceService.get_cost_of_living_index()
             
         if not filtered:
@@ -354,16 +363,9 @@ async def get_purchase_advice(item_name: str, config: RunnableConfig = None) -> 
     [PHASE 17] Provides smart advice on whether now is a good time to buy a specific high-value item.
     Analyzes price trends, seasonal sales, and inflation.
     """
-    # Logic simulating price trend analysis for popular items in India
-    trends = {
-        "laptop": "Prices expected to dip in 3 weeks due to seasonal sales. Suggestion: WAIT.",
-        "iphone": "New model launch approaching in 4 months. Current prices stable. Suggestion: WAIT or look for refurbished.",
-        "gold": "Market volatility high due to geopolitical tensions. Prices rising. Suggestion: BUY SMALL quantities if for investment.",
-        "ac": "Pre-summer demand spiking. Prices increasing weekly. Suggestion: BUY NOW."
-    }
-    
-    advice = trends.get(item_name.lower(), f"I'm tracking the data for {item_name}. Generally, market inflation is at 6%. If you need it for productivity, proceed; if for luxury, consider waiting for the next tech expo in 2 months.")
-    return f"SMART PURCHASE ADVICE for {item_name}:\n{advice}"
+    from app.ai.agents.purchase_agent import PurchaseAgent
+    advice = await PurchaseAgent.analyze_purchase_timing(item_name)
+    return f"SMART PURCHASE ADVISORY:\n{advice}"
 
 @tool
 async def get_emergency_readiness(config: RunnableConfig = None) -> str:
@@ -372,8 +374,12 @@ async def get_emergency_readiness(config: RunnableConfig = None) -> str:
     """
     user_id = await _get_user_id(config)
     try:
-        # In a real flow, we'd detect the user's current region via LocationService
-        report = await emergency_service.EmergencyService.get_local_readiness("India/Kerala")
+        async with async_session_factory() as db:
+            # Detect user's current region dynamically
+            loc_history = await location_service.LocationService.get_recent_locations(db, user_id, limit=1)
+            region = loc_history[0]["city"] if loc_history else "India/Kerala"
+            
+            report = await emergency_service.EmergencyService.get_local_readiness(region)
         
         result = f"EMERGENCY READINESS ALERT ({report['region']}):\n"
         for alert in report['active_alerts']:

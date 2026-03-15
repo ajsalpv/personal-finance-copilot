@@ -1,13 +1,26 @@
 """
 Emergency Agent — LLM-Powered Regional Risk & Policy Analysis
 Replaces hardcoded rule-based logic with dynamic AI reasoning.
+Uses real-time data from hot_context.json.
 """
 import logging
 import json
+import os
 from typing import Dict, List, Any
 from app.services.news_intelligence import _call_groq
 
 logger = logging.getLogger(__name__)
+
+def _get_hot_context():
+    """Reads the latest real-time news/weather/economic context."""
+    data_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "hot_context.json")
+    if os.path.exists(data_path):
+        try:
+            with open(data_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except:
+            return "No real-time context file readable."
+    return "No real-time context found."
 
 class EmergencyAgent:
     @staticmethod
@@ -17,13 +30,12 @@ class EmergencyAgent:
         Analyzes raw regional data and generates intelligent, contextual alerts.
         """
         system_prompt = """You are a Disaster Preparedness & Regional Risk Agent for Callista AI.
-Your goal is to analyze raw environmental, infrastructure, and health data for a specific region and generate 
-INTELLIGENT, high-confidence alerts.
+Your goal is to analyze REAL-TIME regional data and generate INTELLIGENT, high-confidence alerts.
 
-DO NOT use hardcoded rules. Reason about the data:
-- If rain is predicted in a landslide-prone area (like Kerala) -> High severity.
-- If a supply bottleneck is mentioned -> Suggest specific stock-up items.
-- If national health indicators are normal -> Reassure the user.
+Reason about the data:
+- Connect weather alerts to local geography (e.g., landslides in Kerala).
+- Connect supply chain strikes to daily needs (LPG, petrol, food).
+- Only alert on significant risks. Provide reassurance if things are stable.
 
 RESPOND IN STRICT JSON:
 {
@@ -31,33 +43,38 @@ RESPOND IN STRICT JSON:
     {
       "type": "weather/resource/health/security",
       "severity": "critical/high/medium/low",
-      "title": "Clear, informative title",
-      "description": "Intelligent analysis of the risk",
+      "title": "Clear title",
+      "description": "Analysis of the risk",
       "confidence": "XX%",
-      "prep": ["List of specific, actionable prep steps"]
+      "prep": ["Actionable prep steps"]
     }
   ],
-  "overall_status": "String describing the general regional climate"
+  "overall_status": "Summary of regional status"
 }
 Only return JSON."""
 
-        # In a real app, this would fetch from MET/Gov APIs.
-        # We simulate the RAW INPUT which the AI will then REASON about.
+        hot_data = _get_hot_context()
         raw_input = f"""
-        Region: {region}
+        Requested Region: {region}
         User Context: {json.dumps(user_context)}
-        Raw Data Signals:
-        - MET Signal: 200mm rainfall predicted in next 24h for Western Ghats.
-        - Supply Signal: LPG transport strike starting in 3 days.
-        - Health Signal: Zero active outbreaks reported.
+        REAL-TIME HOT CONTEXT FEED:
+        {hot_data}
         """
 
         raw_response = await _call_groq(system_prompt, raw_input)
         
         try:
             cleaned = raw_response.strip()
-            if cleaned.startswith("```"):
-                cleaned = cleaned.split("\n", 1)[1].rsplit("```", 1)[0]
+            if "```json" in cleaned:
+                cleaned = cleaned.split("```json")[1].split("```")[0].strip()
+            elif "```" in cleaned:
+                cleaned = cleaned.split("```")[1].split("```")[0].strip()
+            
+            # Find the first { and last }
+            start = cleaned.find("{")
+            end = cleaned.rfind("}")
+            if start != -1 and end != -1:
+                cleaned = cleaned[start:end+1]
             
             data = json.loads(cleaned)
             return {
@@ -92,21 +109,27 @@ RESPOND IN STRICT JSON:
 ]
 Only return JSON."""
 
-        # Simulate raw incoming policy feeds
+        hot_data = _get_hot_context()
         raw_input = f"""
-        Region: {region}
-        Policy Signals:
-        - Central Cabinet: New fuel subsidy under consideration for next month.
-        - RBI Bulletin: Digital Rupee (e-Rupee) adoption milestones and incentives for merchants.
-        - Tax Dept: New simplified GST filing for small business owners.
+        Requested Region: {region}
+        REAL-TIME POLICY FEEDS:
+        {hot_data}
         """
 
         raw_response = await _call_groq(system_prompt, raw_input)
         
         try:
             cleaned = raw_response.strip()
-            if cleaned.startswith("```"):
-                cleaned = cleaned.split("\n", 1)[1].rsplit("```", 1)[0]
+            if "```json" in cleaned:
+                cleaned = cleaned.split("```json")[1].split("```")[0].strip()
+            elif "```" in cleaned:
+                cleaned = cleaned.split("```")[1].split("```")[0].strip()
+                
+            start = cleaned.find("[")
+            end = cleaned.rfind("]")
+            if start != -1 and end != -1:
+                cleaned = cleaned[start:end+1]
+                
             return json.loads(cleaned)
         except Exception as e:
             logger.error(f"Policy Agent failing: {e}")

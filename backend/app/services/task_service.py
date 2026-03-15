@@ -17,6 +17,15 @@ async def create_task(
     priority: str = "medium",
     recurrence: Optional[str] = None,
 ) -> dict:
+    # Automated Task Intelligence (AI Agent)
+    from app.ai.agents.task_agent import TaskIntelligenceAgent
+    intelligence = await TaskIntelligenceAgent.analyze_task(title, description)
+    
+    # If priority is default "medium", let the AI decide. Otherwise respect user choice.
+    final_priority = priority
+    if priority == "medium":
+        final_priority = intelligence.get("priority", "medium")
+    
     result = await db.execute(
         text("""
             INSERT INTO tasks (user_id, title, description, due_date, priority, recurrence)
@@ -25,7 +34,7 @@ async def create_task(
         """),
         {
             "user_id": user_id, "title": title, "desc": description,
-            "due": due_date, "priority": priority, "recurrence": recurrence,
+            "due": due_date, "priority": final_priority, "recurrence": recurrence,
         },
     )
     await db.commit()

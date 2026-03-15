@@ -51,9 +51,17 @@ Only return JSON."""
         
         try:
             cleaned = raw_response.strip()
-            if cleaned.startswith("```"):
-                cleaned = cleaned.split("\n", 1)[1].rsplit("```", 1)[0]
+            if "```json" in cleaned:
+                cleaned = cleaned.split("```json")[1].split("```")[0].strip()
+            elif "```" in cleaned:
+                cleaned = cleaned.split("```")[1].split("```")[0].strip()
             
+            # Find the first { and last }
+            start = cleaned.find("{")
+            end = cleaned.rfind("}")
+            if start != -1 and end != -1:
+                cleaned = cleaned[start:end+1]
+                
             data = json.loads(cleaned)
             cat = data.get("category")
             if cat in existing_categories:

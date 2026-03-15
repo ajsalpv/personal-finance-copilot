@@ -1,4 +1,6 @@
-from typing import Annotated, Literal, TypedDict
+from typing import Annotated, Literal, TypedDict, List, Dict, Any
+import json
+import logging
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 from langgraph.graph import StateGraph, END, START
 from langgraph.prebuilt import ToolNode
@@ -15,6 +17,7 @@ from app.services.memory_service import get_long_term_memory
 from app.services.news_intelligence import NewsIntelligenceService
 from app.services.location_service import LocationService
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # Initialize the LLM
@@ -69,12 +72,31 @@ async def vision_expert(state: AgentState):
 # --- PREDICTIVE NODES ---
 
 async def advisory_triage(state: AgentState):
-    """[PHASE 15+] Triages global news for personal relevance."""
-    news = await NewsIntelligenceService.fetch_global_risks()
-    mock_stats = {"top_categories": ["fuel", "groceries", "tech"]}
+    """[PHASE 15+] Triages global news for personal relevance with dynamic context."""
+    user_id = state.get("user_id", "default_user")
     
-    advisories = await NewsIntelligenceService.analyze_impact(news, state.get("memory_context", {}))
-    relevant_briefs = await NewsIntelligenceService.filter_relevance(advisories, mock_stats)
+    # 1. Dynamically Assemble Context
+    async with async_session_factory() as db:
+        # Fetch current city from location history
+        loc_history = await LocationService.get_recent_locations(db, user_id, limit=1)
+        current_city = loc_history[0]["city"] if loc_history else "Unknown"
+        
+        # Fetch top spending categories (30d)
+        now = datetime.now(timezone.utc)
+        start = now - timedelta(days=30)
+        from app.services.transaction_service import get_spending_summary
+        summary = await get_spending_summary(db, user_id, start, now)
+        top_cats = [c["category"] for c in summary.get("by_category", [])[:5]]
+
+    user_context = {
+        "location": current_city,
+        "top_categories": top_cats if top_cats else ["General"],
+        "current_city": current_city
+    }
+    
+    news = await NewsIntelligenceService.fetch_global_risks()
+    advisories = await NewsIntelligenceService.analyze_impact(news, user_context)
+    relevant_briefs = await NewsIntelligenceService.filter_relevance(advisories, user_context)
     
     return {"advisory_briefs": relevant_briefs}
 
@@ -84,54 +106,80 @@ async def travel_intelligence(state: AgentState):
     async with async_session_factory() as db:
         anomaly = await LocationService.detect_travel_anomaly(db, user_id)
         if anomaly and anomaly.get("is_traveling"):
-            state["messages"].append(AIMessage(content=f"System Alert: Travel anomaly detected. You appear to be in {anomaly['current_city']}. Would you like to update your travel plan?"))
+            # Instead of a hardcoded string, we could also agentize this alert generation.
+            state["messages"].append(AIMessage(content=f"System Alert: Travel anomaly detected. You appear to be in {anomaly['current_city']}. {anomaly.get('reasoning', '')}"))
     return state
 
-# --- SUPERVISOR NODE ---
-
-class RouterState(TypedDict):
-    next: Literal["call", "system", "vision", "__end__"]
+# --- SUPERVISOR & AUTO-ROUTING ---
 
 async def supervisor(state: AgentState):
-    """The central brain that routes to specialists."""
-    prompt = SystemMessage(
-        content=(
-            "You are the Callista Supervisor. Analyze the user request and route to the correct specialist.\n"
-            "- 'call': If the user wants to handle/answer calls or manage call interactions.\n"
-            "- 'vision': If the user mentions seeing something, using the camera, or analyzing the screen.\n"
-            "- 'system': For finance, tasks, memory, maps, or general help.\n"
-            "Respond with ONLY the name of the specialist."
-        )
-    )
-    messages = [prompt] + state["messages"]
+    """The central brain that routes to specialists using LLM reasoning."""
+    system_prompt = """You are the Callista Supervisor. Analyze the user request and determine the best specialist.
+    Specialists:
+    - 'call': Managing phone calls, answering calls, concierge services.
+    - 'vision': Camera, screen, image recognition, narration of surroundings.
+    - 'system': Finance, budgeting, tasks, reminders, memory, general questions.
+    
+    RESPOND IN STRICT JSON:
+    {"next": "call/vision/system", "reasoning": "short explanation"}
+    Only return JSON."""
+    
+    messages = [SystemMessage(content=system_prompt)] + state["messages"]
     response = await llm.ainvoke(messages)
     
-    route = response.content.lower()
-    if "call" in route:
-        return {"next": "call"}
-    if "vision" in route:
-        return {"next": "vision"}
-    return {"next": "system"}
-
-async def memory_entry(state: AgentState):
-    """Pre-processes the message to fetch LTM and extract facts."""
-    user_id = state.get("user_id", "default_user")
-    async with async_session_factory() as db:
-        memory_context = await get_long_term_memory(db, user_id)
-        last_human_msg = state["messages"][-1].content
-        await extract_and_store_facts(db, user_id, last_human_msg)
-    return {"memory_context": memory_context}
+    try:
+        cleaned = response.content.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[1].rsplit("```", 1)[0]
+        data = json.loads(cleaned)
+        return {"next": data.get("next", "system")}
+    except:
+        # Fallback if AI fails
+        return {"next": "system"}
 
 async def self_reflection(state: AgentState):
-    """Analyzes the response and user feedback for self-improvement."""
+    """
+    [REFLECTION AGENT]
+    Analyzes the user's last message to learn preferences or corrections.
+    Replaces keyword-based extraction with LLM reasoning.
+    """
     user_id = state.get("user_id", "default_user")
     last_msg = state["messages"][-1].content
     
-    if any(keyword in last_msg.lower() for keyword in ["don't", "stop", "never", "always", "prefer"]):
-        async with async_session_factory() as db:
-            await extract_and_store_facts(db, user_id, f"USER PREFERENCE CORRECTION: {last_msg}")
+    system_prompt = """You are a Preference Learning Agent. 
+    Analyze the user's message. Is the user expressing a long-term preference, a correction to your behavior, or an important life fact?
+    Examples: "Never use red for alerts", "I prefer Zomato over Swiggy", "My sister's name is Maya".
+    
+    RESPOND IN STRICT JSON:
+    {"is_preference": true/false, "fact": "The extracted fact or preference"}
+    Only return JSON."""
+    
+    messages = [SystemMessage(content=system_prompt), HumanMessage(content=last_msg)]
+    response = await llm.ainvoke(messages)
+    
+    try:
+        cleaned = response.content.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[1].rsplit("```", 1)[0]
+        data = json.loads(cleaned)
+        if data.get("is_preference"):
+            async with async_session_factory() as db:
+                await extract_and_store_facts(db, user_id, data["fact"])
+                logger.info(f"Learned new preference: {data['fact']}")
+    except Exception as e:
+        logger.error(f"Reflection Agent failed: {e}")
             
     return state
+
+# --- UTILS ---
+
+async def memory_entry(state: AgentState):
+    """Pre-processes the message to fetch LTM."""
+    user_id = state.get("user_id", "default_user")
+    async with async_session_factory() as db:
+        memory_context = await get_long_term_memory(db, user_id)
+        # Fact extraction is now handled by the Reflection node at the end of the loop
+    return {"memory_context": memory_context}
 
 # --- GRAPH DEFINITION ---
 
@@ -163,8 +211,7 @@ workflow.add_conditional_edges(
 )
 
 def should_continue(state: AgentState):
-    messages = state["messages"]
-    last_message = messages[-1]
+    last_message = state["messages"][-1]
     if getattr(last_message, "tool_calls", None):
         return "tools"
     return "reflect"
@@ -184,9 +231,6 @@ async def process_message(thread_id: str, user_id: str, message: str) -> dict:
         {
             "messages": [HumanMessage(content=message)],
             "user_id": user_id,
-            "memory_context": "",
-            "is_active": True,
-            "last_active_time": 0.0
         },
         config=config,
     )

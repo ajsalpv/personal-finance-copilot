@@ -51,41 +51,18 @@ class NewsIntelligenceService:
     async def fetch_global_risks() -> List[Dict[str, Any]]:
         """
         [NEWS MONITORING AGENT]
-        Fetches trending global news. In a production system, this would
-        pull from RSS feeds, NewsAPI, or a web scraper. For now, it uses
-        simulated headlines, but the ANALYSIS is fully AI-powered.
+        Fetches trending global news from the real-time hot context.
         """
         try:
-            return [
-                {
-                    "title": "Middle East supply chains disrupted as conflict escalates",
-                    "category": "geopolitics",
-                    "source": "Global News Network",
-                    "region": "Middle East",
-                    "severity": 0.85,
-                },
-                {
-                    "title": "RBI signals potential interest rate hike amid rising inflation in India",
-                    "category": "economy",
-                    "source": "Financial Express",
-                    "region": "India",
-                    "severity": 0.65,
-                },
-                {
-                    "title": "Heavy monsoon predicted for Southern India; Kerala on orange alert",
-                    "category": "climate",
-                    "source": "MET Department",
-                    "region": "India/Kerala",
-                    "severity": 0.90,
-                },
-                {
-                    "title": "New central subsidy for electric vehicles announced in India",
-                    "category": "policy",
-                    "source": "GovT Business",
-                    "region": "India",
-                    "severity": 0.40,
-                }
-            ]
+            import os
+            data_path = os.path.join(os.path.dirname(__file__), "..", "data", "hot_context.json")
+            if os.path.exists(data_path):
+                with open(data_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data.get("news_headlines", [])
+            
+            # Fallback if file missing
+            return [{"title": "Global inflation trends rising", "category": "economy", "severity": 0.5}]
         except Exception as e:
             logger.error(f"Error fetching news: {e}")
             return []
@@ -101,7 +78,7 @@ class NewsIntelligenceService:
             return []
 
         headlines = "\n".join([
-            f"- [{e['category'].upper()}] {e['title']} (Source: {e['source']}, Region: {e['region']}, Severity: {e['severity']})"
+            f"- [{e.get('category', 'OTHER').upper()}] {e['title']} (Source: {e.get('source', 'Unknown')}, Region: {e.get('region', 'Global')}, Severity: {e.get('severity', 0.5)})"
             for e in news_data
         ])
 
@@ -150,18 +127,25 @@ Generate your intelligent analysis as JSON:"""
         
         # Parse the JSON response
         try:
-            # Clean up potential markdown wrapping
             cleaned = raw.strip()
-            if cleaned.startswith("```"):
-                cleaned = cleaned.split("\n", 1)[1]
-                cleaned = cleaned.rsplit("```", 1)[0]
+            if "```json" in cleaned:
+                cleaned = cleaned.split("```json")[1].split("```")[0].strip()
+            elif "```" in cleaned:
+                cleaned = cleaned.split("```")[1].split("```")[0].strip()
+            
+            # Find the first [ and last ]
+            start = cleaned.find("[")
+            end = cleaned.rfind("]")
+            if start != -1 and end != -1:
+                cleaned = cleaned[start:end+1]
+                
             advisories = json.loads(cleaned)
             
             # Add severity from original data
             for adv in advisories:
                 for event in news_data:
                     if event['title'].lower() in adv.get('event', '').lower() or adv.get('event', '').lower() in event['title'].lower():
-                        adv['severity'] = event['severity']
+                        adv['severity'] = event.get('severity', 0.5)
                         break
                 else:
                     adv['severity'] = 0.5

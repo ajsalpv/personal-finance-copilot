@@ -1,42 +1,46 @@
 from langchain_core.messages import SystemMessage
 from langchain_groq import ChatGroq
 from app.config import get_settings
-from app.services.memory_service import store_reflection, get_long_term_memory
+from app.services.memory_service import store_reflection
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
+import logging
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
-def get_memory_specialist_prompt():
-    return SystemMessage(
-        content=(
-            "You are Callista's Memory Specialist. Your role is to manage and recall personal facts about the user.\n\n"
-            "YOUR OBJECTIVE:\n"
-            "1. EXTRACT: Identify and extract permanent facts (names, preferences, work details, family, important dates).\n"
-            "2. RETRIEVE: Provide relevant long-term context when requested.\n\n"
-            "FORMATTING:\n"
-            "If extracting a fact, respond with: FACT:[Category]|[Content]\n"
-            "Example: FACT:Family|User's daughter is named Emma.\n"
-            "Example: FACT:Preference|User likes dark mode and indigo accents."
-        )
-    )
-
 async def extract_and_store_facts(db: AsyncSession, user_id: str, message_content: str):
-    """Analyzes a message to extract any new persistent facts."""
+    """
+    [MEMORY SPECIALIST AGENT]
+    Analyzes a message to extract any new persistent facts using intelligent reasoning.
+    Zero hardcoded keyword parsing.
+    """
     llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=settings.GROQ_API_KEY, temperature=0)
+    
+    system_prompt = """You are Callista's Memory Specialist. Extract permanent facts about the user.
+    Facts include: names, preferences, work details, family, important dates, life events.
+    
+    RESPOND IN STRICT JSON:
+    {"extracted_facts": [{"category": "Family/Work/etc", "content": "The fact"}]}
+    If no facts are found, return {"extracted_facts": []}. Only return JSON."""
+    
     prompt = [
-        get_memory_specialist_prompt(),
-        SystemMessage(content=f"Analyze this message for new facts: {message_content}")
+        SystemMessage(content=system_prompt),
+        SystemMessage(content=f"User Message: {message_content}")
     ]
     response = await llm.ainvoke(prompt)
     
-    if "FACT:" in response.content:
-        for line in response.content.split("\n"):
-            if line.startswith("FACT:"):
-                try:
-                    parts = line.replace("FACT:", "").split("|")
-                    if len(parts) == 2:
-                        category, fact = parts[0].strip(), parts[1].strip()
-                        await store_reflection(db, user_id, fact, category)
-                except:
-                    continue
+    try:
+        cleaned = response.content.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[1].rsplit("```", 1)[0]
+        data = json.loads(cleaned)
+        
+        for fact_obj in data.get("extracted_facts", []):
+            category = fact_obj.get("category", "General")
+            content = fact_obj.get("content")
+            if content:
+                await store_reflection(db, user_id, content, category)
+                logger.info(f"Memory Agent extracted fact: {content} ({category})")
+    except Exception as e:
+        logger.error(f"Memory Specialist Agent failed to parse JSON: {e}")

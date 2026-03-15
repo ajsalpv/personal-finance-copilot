@@ -1,0 +1,40 @@
+{
+  "timestamp": "2026-03-15T17:15:00Z",
+  "region": "India/Kerala",
+  "weather": {
+    "status": "Heatwave Conditions",
+    "temp_max": 37,
+    "alerts": ["Yellow alert for 10 districts", "Tidal wave surges in coastal areas"],
+    "summary": "Extreme heat and humidity. Isolated thunderstorms expected locally around March 16-17."
+  },
+  "economy": {
+    "lpg_price_india": 913.00,
+    "lpg_price_kerala": 922.00,
+    "lpg_hike": 60.00,
+    "petrol_price_kerala": 106.48,
+    "petrol_trend": "Stable but critical due to West Asia conflict ($103/barrel crude)",
+    "inflation_indicators": "OMCs absorbing costs for now, but future revisions likely if crude stays high"
+  },
+  "news_headlines": [
+    {
+      "title": "Domestic LPG cylinder prices hiked by ₹60 across India due to global supply disruptions",
+      "category": "economy",
+      "severity": 0.85
+    },
+    {
+      "title": "IMD issues heatwave warning and yellow alert for 10 districts in Kerala",
+      "category": "weather",
+      "severity": 0.90
+    },
+    {
+      "title": "Indian vessels carrying LPG safely cross Strait of Hormuz amid West Asia tensions",
+      "category": "geopolitics",
+      "severity": 0.50
+    },
+    {
+      "title": "Metro expansion in major Indian cities reduces commuting costs and boosts household savings",
+      "category": "infrastructure",
+      "severity": 0.30
+    }
+  ]
+}

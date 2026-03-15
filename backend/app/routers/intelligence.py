@@ -18,14 +18,27 @@ async def get_predictive_advisories(
     try:
         user_id = str(current_user["id"])
         
-        # Build user context for the LLM
+        # 1. Dynamically Assemble Context (Zero Hardcoding)
+        from app.services.location_service import LocationService
+        from app.services.transaction_service import get_spending_summary
+        
+        # Fetch current city from location history
+        loc_history = await LocationService.get_recent_locations(db, user_id, limit=1)
+        current_city = loc_history[0]["city"] if loc_history else "Unknown"
+        
+        # Fetch top spending categories from last 30 days
+        now = datetime.now(timezone.utc)
+        start = now - timedelta(days=30)
+        summary = await get_spending_summary(db, user_id, start, now)
+        top_cats = [c["category"] for c in summary.get("by_category", [])[:5]]
+        
         user_context = {
-            "location": "Kerala, India",
-            "top_categories": ["fuel", "groceries", "tech", "transport"],
-            "current_city": "Kochi"
+            "location": current_city,
+            "top_categories": top_cats if top_cats else ["General"],
+            "current_city": current_city
         }
         
-        # AI-powered pipeline: Fetch → Analyze (LLM) → Filter
+        # 2. AI-powered pipeline: Fetch → Analyze (LLM) → Filter
         news = await NewsIntelligenceService.fetch_global_risks()
         advisories = await NewsIntelligenceService.analyze_impact(news, user_context)
         filtered = await NewsIntelligenceService.filter_relevance(advisories, user_context)
