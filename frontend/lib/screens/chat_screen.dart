@@ -151,7 +151,7 @@ class _ChatBubble extends StatelessWidget {
     final memoryRecalled = msg['memory_recalled'] == true;
     final width = MediaQuery.of(context).size.width;
 
-    return Align(
+    final bubbleContent = Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: EdgeInsets.only(

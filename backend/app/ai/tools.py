@@ -14,7 +14,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from app.database import async_session_factory
 from app.config import get_settings
-from app.services import transaction_service, task_service, memory_service, budget_service
+from app.services import transaction_service, task_service, memory_service, budget_service, news_intelligence
 
 logger = logging.getLogger(__name__)
 
@@ -299,6 +299,39 @@ async def control_device(feature: str, action: str) -> str:
     """
     return f"COMMAND:DEVICE|{feature}|{action}"
 
+@tool
+async def get_strategic_advisory(config: RunnableConfig = None) -> str:
+    """
+    Analyzes global geopolitical and economic news against the user's personal spending data.
+    Use this when the user asks about 'future risks', 'market impact', 'war effects', 
+    or when they want a proactive briefing on how global events might affect their pocket.
+    """
+    user_id = await _get_user_id(config)
+    if not user_id:
+        return "Error: User context not found."
+    
+    try:
+        async with async_session_factory() as db:
+            # 1. Get user's recent transactions for context
+            three_months_ago = datetime.now(timezone.utc) - timedelta(days=90)
+            txns = await transaction_service.get_transactions(db, user_id, start_date=three_months_ago)
+            
+            # 2. Fetch and analyze global risks
+            news_data = await news_intelligence.NewsIntelligenceService.fetch_global_risks()
+            advisories = await news_intelligence.NewsIntelligenceService.analyze_risk_impact(txns, news_data)
+            
+        if not advisories:
+            return "Current global trends don't show an immediate direct impact on your specific spending habits, Sir. You are well-positioned."
+            
+        result = "PROACTIVE STRATEGIC ADVISORY:\n"
+        for adv in advisories:
+            result += f"- {adv['event']}\n  Impact: {adv['impact']}\n  Suggestion: {adv['suggestion']}\n"
+            
+        return result
+    except Exception as e:
+        logger.error(f"Error in strategic advisory: {e}")
+        return "Failed to process global intelligence data."
+
 # List of all available tools
 all_tools = [
     log_expense,
@@ -316,4 +349,5 @@ all_tools = [
     add_calendar_event,
     list_calendar_events,
     control_device,
+    get_strategic_advisory,
 ]

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../services/api_client.dart';
 import 'chat_screen.dart';
+import 'main_navigation.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Animated background particles
@@ -19,14 +20,14 @@ class _ParticlePainter extends CustomPainter {
       final y = rng.nextDouble() * size.height;
       final r = rng.nextDouble() * 2.5 + 0.5;
       final opacity = 0.08 + 0.12 * math.sin(angle + i);
-      paint.color = const Color(0xFF818CF8).withValues(alpha: opacity);
+      paint.color = const Color(0xFF818CF8).withOpacity(opacity);
       canvas.drawCircle(Offset(x, y), r, paint);
     }
 
     // Orb 1
     final p1 = Paint()
       ..shader = RadialGradient(
-        colors: [const Color(0xFF6366F1).withValues(alpha: 0.2), Colors.transparent],
+        colors: [const Color(0xFF6366F1).withOpacity(0.2), Colors.transparent],
       ).createShader(Rect.fromCircle(center: Offset(size.width * 0.15, size.height * 0.25), radius: 180));
     canvas.drawCircle(
       Offset(size.width * 0.15 + math.cos(angle) * 20, size.height * 0.25 + math.sin(angle) * 12),
@@ -37,7 +38,7 @@ class _ParticlePainter extends CustomPainter {
     // Orb 2
     final p2 = Paint()
       ..shader = RadialGradient(
-        colors: [const Color(0xFF8B5CF6).withValues(alpha: 0.18), Colors.transparent],
+        colors: [const Color(0xFF8B5CF6).withOpacity(0.18), Colors.transparent],
       ).createShader(Rect.fromCircle(center: Offset(size.width * 0.85, size.height * 0.7), radius: 150));
     canvas.drawCircle(
       Offset(size.width * 0.85 + math.sin(angle) * 15, size.height * 0.7 + math.cos(angle) * 10),
@@ -117,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => ChatScreen(),
+            pageBuilder: (_, __, ___) => const MainNavigation(),
             transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
             transitionDuration: const Duration(milliseconds: 600),
           ),
@@ -160,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF6366F1).withValues(alpha: 0.5),
+                                color: const Color(0xFF6366F1).withOpacity(0.5),
                                 blurRadius: 30,
                                 spreadRadius: 2,
                               ),
@@ -181,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         const SizedBox(height: 6),
                         Text(
                           'Your Personal AI Life Assistant',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
+                          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
                         ),
                         const SizedBox(height: 44),
 
@@ -189,9 +190,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         Container(
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.04),
+                            color: Colors.white.withOpacity(0.04),
                             borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                            border: Border.all(color: Colors.white.withOpacity(0.08)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -200,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.05),
+                                  color: Colors.white.withOpacity(0.05),
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Row(
@@ -235,9 +236,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                   decoration: BoxDecoration(
-                                    color: Colors.redAccent.withValues(alpha: 0.12),
+                                    color: Colors.redAccent.withOpacity(0.12),
                                     borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                                    border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
                                   ),
                                   child: Text(
                                     _error!,
@@ -263,7 +264,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     borderRadius: BorderRadius.circular(16),
                                     boxShadow: _isLoading
                                         ? []
-                                        : [BoxShadow(color: const Color(0xFF6366F1).withValues(alpha: 0.45), blurRadius: 16)],
+                                        : [BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.45), blurRadius: 16)],
                                   ),
                                   child: Center(
                                     child: _isLoading
@@ -286,7 +287,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         const SizedBox(height: 32),
                         Text(
                           'Secured with AES-256 & JWT',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.18), fontSize: 11),
+                          style: TextStyle(color: Colors.white.withOpacity(0.18), fontSize: 11),
                         ),
                       ],
                     ),
@@ -324,7 +325,7 @@ class _Tab extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: active ? Colors.white : Colors.white.withValues(alpha: 0.4),
+              color: active ? Colors.white : Colors.white.withOpacity(0.4),
               fontWeight: active ? FontWeight.w600 : FontWeight.normal,
               fontSize: 14,
             ),
@@ -356,9 +357,9 @@ class _InputField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: TextField(
         controller: controller,
@@ -367,8 +368,8 @@ class _InputField extends StatelessWidget {
         style: const TextStyle(color: Colors.white, fontSize: 15),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 14),
-          prefixIcon: Icon(icon, color: Colors.white.withValues(alpha: 0.3), size: 20),
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 14),
+          prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.3), size: 20),
           suffixIcon: suffix,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

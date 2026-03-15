@@ -1,140 +1,241 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import '../services/api_client.dart';
+import 'dart:ui';
 
 class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
+
   @override
-  _DashboardScreenState createState() => _DashboardScreenState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  List<dynamic> _stats = [];
   bool _isLoading = true;
+  double _totalBalance = 0;
+  double _monthlyExpenses = 0;
+  List<dynamic> _recentInsights = [];
 
   @override
   void initState() {
     super.initState();
-    _loadStats();
+    _loadDashboardData();
   }
 
-  Future<void> _loadStats() async {
+  Future<void> _loadDashboardData() async {
+    setState(() => _isLoading = true);
     try {
-      final stats = await ApiClient.getDailyStats(days: 7);
+      // Simulate/Fetch aggregated data
+      final history = await ApiClient.getChatHistory();
+      // For now we'll derive some stats or wait for specialized endpoints
       setState(() {
-        _stats = stats;
-        _isLoading = false;
+        _totalBalance = 124550.0; // Mock data for now
+        _monthlyExpenses = 45200.0;
+        _recentInsights = [
+          {"type": "risk", "msg": "Global oil prices rising. Fuel hike likely next week."},
+          {"type": "budget", "msg": "You've spent 85% of your Entertainment budget."},
+        ];
       });
     } catch (e) {
+      print("Error loading dashboard: $e");
+    } finally {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load stats: $e')),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        title: const Text('Financial Analytics', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Spending Trend (Last 7 Days)',
-                    style: TextStyle(color: Colors.white70, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    height: 300,
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(10, 20, 30, 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5)),
-                      ],
-                    ),
-                    child: LineChart(
-                      LineChartData(
-                        gridData: FlGridData(show: false),
-                        titlesData: FlTitlesData(
-                          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (value, meta) {
-                                if (value.toInt() >= 0 && value.toInt() < _stats.length) {
-                                  final date = _stats[value.toInt()]['date'] as String;
-                                  return Text(date.substring(5), style: const TextStyle(color: Colors.white54, fontSize: 10));
-                                }
-                                return const Text('');
-                              },
-                            ),
-                          ),
-                        ),
-                        borderData: FlBorderData(show: false),
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: _stats.asMap().entries.map((e) {
-                              return FlSpot(e.key.toDouble(), e.value['amount'].toDouble());
-                            }).toList(),
-                            isCurved: true,
-                            color: const Color(0xFF6366F1),
-                            barWidth: 4,
-                            isStrokeCapRound: true,
-                            dotData: FlDotData(show: true),
-                            belowBarData: BarAreaData(
-                              show: true,
-                              color: const Color(0xFF6366F1).withOpacity(0.15),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  const Text('Top Categories', style: TextStyle(color: Colors.white70, fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 15),
-                  // Placeholder for Category list
-                  _buildCategoryCard('Food', '₹4,500', Colors.orangeAccent),
-                  _buildCategoryCard('Transport', '₹1,200', Colors.blueAccent),
-                  _buildCategoryCard('Subscriptions', '₹800', Colors.purpleAccent),
-                ],
+      body: Stack(
+        children: [
+          // Background Gradient
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
+          ),
+          
+          SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                const SizedBox(height: 20),
+                _buildHeader(),
+                const SizedBox(height: 30),
+                _buildBalanceCard(),
+                const SizedBox(height: 24),
+                _buildSectionTitle("Strategic Intelligence"),
+                const SizedBox(height: 12),
+                _buildIntelligenceFeed(),
+                const SizedBox(height: 24),
+                _buildSectionTitle("Quick Actions"),
+                const SizedBox(height: 12),
+                _buildActionGrid(),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildCategoryCard(String title, String amount, Color color) {
+  Widget _buildHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Good Afternoon, Sir',
+              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 16),
+            ),
+            const Text(
+              'Callista Command',
+              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: const Icon(Icons.person_outline_rounded, color: Colors.white),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBalanceCard() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(15),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            'Current Liquidity',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '₹${_totalBalance.toStringAsFixed(0)}',
+            style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 1),
+          ),
+          const SizedBox(height: 20),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-              const SizedBox(width: 12),
-              Text(title, style: const TextStyle(color: Colors.white, fontSize: 16)),
+              _buildStatItem("Monthly Spend", "₹${_monthlyExpenses.toStringAsFixed(0)}"),
+              _buildStatItem("Savings Rate", "14.2%"),
             ],
           ),
-          Text(amount, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _buildIntelligenceFeed() {
+    return Column(
+      children: _recentInsights.map((insight) {
+        final isRisk = insight['type'] == 'risk';
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isRisk ? Colors.redAccent.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isRisk ? Icons.warning_amber_rounded : Icons.tips_and_updates_rounded,
+                color: isRisk ? Colors.redAccent : Colors.amberAccent,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  insight['msg'],
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildActionGrid() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 16,
+      crossAxisSpacing: 16,
+      childAspectRatio: 1.5,
+      children: [
+        _buildActionCard(Icons.add_shopping_cart_rounded, "Log Expense", Colors.tealAccent),
+        _buildActionCard(Icons.savings_rounded, "Add Income", Colors.lightBlueAccent),
+        _buildActionCard(Icons.camera_alt_rounded, "Scan Receipt", Colors.orangeAccent),
+        _buildActionCard(Icons.mic_rounded, "Voice Command", Color(0xFF8B5CF6)),
+      ],
+    );
+  }
+
+  Widget _buildActionCard(IconData icon, String label, Color color) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
         ],
       ),
     );

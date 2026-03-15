@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import '../services/api_client.dart';
 import 'chat_screen.dart';
 import 'login_screen.dart';
+import 'main_navigation.dart';
 
 class BootScreen extends StatefulWidget {
   final bool isLoggedIn;
@@ -68,7 +69,7 @@ class _BootScreenState extends State<BootScreen> {
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => widget.isLoggedIn ? ChatScreen() : const LoginScreen(),
+        builder: (_) => widget.isLoggedIn ? const MainNavigation() : const LoginScreen(),
       ),
     );
   }
@@ -131,7 +132,7 @@ class _BootScreenState extends State<BootScreen> {
                   _pollingTimer?.cancel();
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(
-                      builder: (_) => widget.isLoggedIn ? ChatScreen() : const LoginScreen(),
+                      builder: (_) => widget.isLoggedIn ? const MainNavigation() : const LoginScreen(),
                     ),
                   );
                 },
