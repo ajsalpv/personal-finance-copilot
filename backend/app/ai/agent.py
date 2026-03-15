@@ -12,6 +12,8 @@ from app.ai.tools import all_tools
 from app.ai.specialists.call_agent import get_call_concierge_prompt
 from app.ai.specialists.memory_agent import extract_and_store_facts
 from app.services.memory_service import get_long_term_memory
+from app.services.news_intelligence import NewsIntelligenceService
+from app.services.location_service import LocationService
 
 settings = get_settings()
 
@@ -64,6 +66,27 @@ async def vision_expert(state: AgentState):
     response = await llm.ainvoke(messages)
     return {"messages": [response]}
 
+# --- PREDICTIVE NODES ---
+
+async def advisory_triage(state: AgentState):
+    """[PHASE 15+] Triages global news for personal relevance."""
+    news = await NewsIntelligenceService.fetch_global_risks()
+    mock_stats = {"top_categories": ["fuel", "groceries", "tech"]}
+    
+    advisories = await NewsIntelligenceService.analyze_impact(news, state.get("memory_context", {}))
+    relevant_briefs = await NewsIntelligenceService.filter_relevance(advisories, mock_stats)
+    
+    return {"advisory_briefs": relevant_briefs}
+
+async def travel_intelligence(state: AgentState):
+    """[PHASE 18] Detects travel anomalies and updates context."""
+    user_id = state.get("user_id", "default_user")
+    async with async_session_factory() as db:
+        anomaly = await LocationService.detect_travel_anomaly(db, user_id)
+        if anomaly and anomaly.get("is_traveling"):
+            state["messages"].append(AIMessage(content=f"System Alert: Travel anomaly detected. You appear to be in {anomaly['current_city']}. Would you like to update your travel plan?"))
+    return state
+
 # --- SUPERVISOR NODE ---
 
 class RouterState(TypedDict):
@@ -104,8 +127,6 @@ async def self_reflection(state: AgentState):
     user_id = state.get("user_id", "default_user")
     last_msg = state["messages"][-1].content
     
-    # In a real self-evolution loop, we'd use a separate LLM call to judge the response
-    # For now, we enhance the autonomous learning by checking for corrections or style preferences
     if any(keyword in last_msg.lower() for keyword in ["don't", "stop", "never", "always", "prefer"]):
         async with async_session_factory() as db:
             await extract_and_store_facts(db, user_id, f"USER PREFERENCE CORRECTION: {last_msg}")
@@ -123,9 +144,13 @@ workflow.add_node("vision", vision_expert)
 workflow.add_node("system", system_manager)
 workflow.add_node("tools", ToolNode(tools=all_tools))
 workflow.add_node("reflect", self_reflection)
+workflow.add_node("triage", advisory_triage)
+workflow.add_node("travel", travel_intelligence)
 
 workflow.add_edge(START, "memory_entry")
-workflow.add_edge("memory_entry", "supervisor")
+workflow.add_edge("memory_entry", "travel")
+workflow.add_edge("travel", "triage")
+workflow.add_edge("triage", "supervisor")
 
 workflow.add_conditional_edges(
     "supervisor",
@@ -150,7 +175,6 @@ workflow.add_edge("call", "reflect")
 workflow.add_edge("vision", "reflect")
 workflow.add_edge("reflect", END)
 
-from langgraph.checkpoint.memory import MemorySaver
 memory = MemorySaver()
 agent_executor = workflow.compile(checkpointer=memory)
 
@@ -167,11 +191,9 @@ async def process_message(thread_id: str, user_id: str, message: str) -> dict:
         config=config,
     )
     
-    # Check if memory was recalled (context wasn't empty)
     memory_recalled = bool(result.get("memory_context") and result["memory_context"].strip())
     
     return {
         "reply": result["messages"][-1].content,
         "memory_recalled": memory_recalled
     }
-

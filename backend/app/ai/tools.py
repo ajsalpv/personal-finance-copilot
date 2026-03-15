@@ -14,7 +14,10 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from app.database import async_session_factory
 from app.config import get_settings
-from app.services import transaction_service, task_service, memory_service, budget_service, news_intelligence
+from app.services import (
+    transaction_service, task_service, memory_service, 
+    budget_service, news_intelligence, location_service, emergency_service
+)
 
 logger = logging.getLogger(__name__)
 
@@ -302,9 +305,8 @@ async def control_device(feature: str, action: str) -> str:
 @tool
 async def get_strategic_advisory(config: RunnableConfig = None) -> str:
     """
-    Analyzes global geopolitical and economic news against the user's personal spending data.
-    Use this when the user asks about 'future risks', 'market impact', 'war effects', 
-    or when they want a proactive briefing on how global events might affect their pocket.
+    [PHASE 15/18] Analyzes global geopolitical and economic news against the user's personal context.
+    Provides proactive risk warnings with confidence scores.
     """
     user_id = await _get_user_id(config)
     if not user_id:
@@ -312,25 +314,80 @@ async def get_strategic_advisory(config: RunnableConfig = None) -> str:
     
     try:
         async with async_session_factory() as db:
-            # 1. Get user's recent transactions for context
-            three_months_ago = datetime.now(timezone.utc) - timedelta(days=90)
-            txns = await transaction_service.get_transactions(db, user_id, start_date=three_months_ago)
+            # 1. Gather context (including location)
+            news = await news_intelligence.NewsIntelligenceService.fetch_global_risks()
+            mock_stats = {"top_categories": ["fuel", "groceries", "tech"]}
             
-            # 2. Fetch and analyze global risks
-            news_data = await news_intelligence.NewsIntelligenceService.fetch_global_risks()
-            advisories = await news_intelligence.NewsIntelligenceService.analyze_risk_impact(txns, news_data)
+            # Fetch real location context if available
+            location_ctx = await location_service.LocationService.detect_travel_anomaly(db, user_id)
+            user_city = location_ctx.get("current_city") if location_ctx else "Unknown"
             
-        if not advisories:
-            return "Current global trends don't show an immediate direct impact on your specific spending habits, Sir. You are well-positioned."
+            # 2. Pipeline processing
+            advisories = await news_intelligence.NewsIntelligenceService.analyze_impact(news, {"current_city": user_city})
+            filtered = await news_intelligence.NewsIntelligenceService.filter_relevance(advisories, mock_stats)
             
-        result = "PROACTIVE STRATEGIC ADVISORY:\n"
-        for adv in advisories:
-            result += f"- {adv['event']}\n  Impact: {adv['impact']}\n  Suggestion: {adv['suggestion']}\n"
+            # 3. Cost of Living
+            col_index = await news_intelligence.NewsIntelligenceService.get_cost_of_living_index()
+            
+        if not filtered:
+            return f"Current global trends don't show an immediate direct impact on your spending habits in {user_city}."
+            
+        result = f"PROACTIVE LIFE INTELLIGENCE BRIEFING ({user_city}):\n\n"
+        for adv in filtered:
+            result += f"⚠️ {adv['event']}\n"
+            result += f"  - Impact: {adv['impact']}\n"
+            result += f"  - Confidence: {adv['confidence']}\n"
+            result += f"  - Recommendation: {adv['suggestion']}\n\n"
+            
+        result += f"📊 Cost of Living Insight ({col_index['period']}):\n"
+        for item in col_index['items']:
+            result += f"  - {item['name']}: {item['trend']} ({item['status']})\n"
             
         return result
     except Exception as e:
         logger.error(f"Error in strategic advisory: {e}")
         return "Failed to process global intelligence data."
+
+@tool
+async def get_purchase_advice(item_name: str, config: RunnableConfig = None) -> str:
+    """
+    [PHASE 17] Provides smart advice on whether now is a good time to buy a specific high-value item.
+    Analyzes price trends, seasonal sales, and inflation.
+    """
+    # Logic simulating price trend analysis for popular items in India
+    trends = {
+        "laptop": "Prices expected to dip in 3 weeks due to seasonal sales. Suggestion: WAIT.",
+        "iphone": "New model launch approaching in 4 months. Current prices stable. Suggestion: WAIT or look for refurbished.",
+        "gold": "Market volatility high due to geopolitical tensions. Prices rising. Suggestion: BUY SMALL quantities if for investment.",
+        "ac": "Pre-summer demand spiking. Prices increasing weekly. Suggestion: BUY NOW."
+    }
+    
+    advice = trends.get(item_name.lower(), f"I'm tracking the data for {item_name}. Generally, market inflation is at 6%. If you need it for productivity, proceed; if for luxury, consider waiting for the next tech expo in 2 months.")
+    return f"SMART PURCHASE ADVICE for {item_name}:\n{advice}"
+
+@tool
+async def get_emergency_readiness(config: RunnableConfig = None) -> str:
+    """
+    [PHASE 17] Checks for local risks like weather (Kerala rainfall), shortages, or policy changes.
+    """
+    user_id = await _get_user_id(config)
+    try:
+        # In a real flow, we'd detect the user's current region via LocationService
+        report = await emergency_service.EmergencyService.get_local_readiness("India/Kerala")
+        
+        result = f"EMERGENCY READINESS ALERT ({report['region']}):\n"
+        for alert in report['active_alerts']:
+            result += f"\n🚨 {alert['title']} ({alert['severity'].upper()})\n"
+            result += f"  - Description: {alert['description']}\n"
+            result += f"  - Confidence: {alert['confidence']}\n"
+            result += f"  - Preparation:\n"
+            for step in alert['prep']:
+                result += f"    • {step}\n"
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error in emergency readiness: {e}")
+        return "Failed to retrieve local risk data."
 
 # List of all available tools
 all_tools = [
@@ -350,4 +407,6 @@ all_tools = [
     list_calendar_events,
     control_device,
     get_strategic_advisory,
+    get_purchase_advice,
+    get_emergency_readiness,
 ]

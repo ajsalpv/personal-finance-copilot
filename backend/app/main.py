@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.routers import (
     auth, transactions, categories, budgets,
-    tasks, memories, timeline, files, export, notifications, chat, vision
+    tasks, memories, timeline, files, export, notifications, chat, vision, locations
 )
 from app.telegram.bot import start_bot, stop_bot
 from app.database import engine, async_session_factory
@@ -215,6 +215,7 @@ app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(export.router, prefix="/api/export", tags=["export"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(vision.router, prefix="/api/vision", tags=["vision"])
+app.include_router(locations.router, prefix="/api/locations", tags=["location-intelligence"])
 
 @app.get("/api/ping", tags=["health"])
 async def ping_endpoint():
