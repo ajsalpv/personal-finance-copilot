@@ -53,8 +53,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_transactions_user_date ON transactions(user_id, date DESC);
-CREATE INDEX idx_transactions_category ON transactions(user_id, category);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_date ON transactions(user_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(user_id, category);
 
 -- ============================================================
 -- BUDGETS
@@ -83,8 +83,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_tasks_user_status ON tasks(user_id, status);
-CREATE INDEX idx_tasks_due_date ON tasks(user_id, due_date);
+CREATE INDEX IF NOT EXISTS idx_tasks_user_status ON tasks(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(user_id, due_date);
 
 -- ============================================================
 -- MEMORIES
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS memories (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_memories_user ON memories(user_id);
+CREATE INDEX IF NOT EXISTS idx_memories_user ON memories(user_id);
 
 -- ============================================================
 -- TIMELINE EVENTS
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS timeline_events (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_timeline_user_time ON timeline_events(user_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_timeline_user_time ON timeline_events(user_id, timestamp DESC);
 
 -- ============================================================
 -- SUBSCRIPTIONS
@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS file_records (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_files_user ON file_records(user_id);
+CREATE INDEX IF NOT EXISTS idx_files_user ON file_records(user_id);
 
 -- ============================================================
 -- NOTIFICATIONS
@@ -176,7 +176,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_notifications_user ON notifications(user_id, is_read, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read, created_at DESC);
 
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS)
@@ -195,19 +195,47 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Policies: users can only access their own data
 -- (The service role key bypasses RLS, so our backend can operate freely)
-CREATE POLICY "Users can view own data" ON users FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own data" ON users FOR UPDATE USING (auth.uid() = id);
-
-CREATE POLICY "Users own categories" ON categories FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "Users own transactions" ON transactions FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "Users own budgets" ON budgets FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "Users own tasks" ON tasks FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "Users own memories" ON memories FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "Users own timeline" ON timeline_events FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "Users own subscriptions" ON subscriptions FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "Users own insights" ON insights FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "Users own files" ON file_records FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "Users own notifications" ON notifications FOR ALL USING (user_id = auth.uid());
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'users' AND policyname = 'Users can view own data') THEN
+        CREATE POLICY "Users can view own data" ON users FOR SELECT USING (auth.uid() = id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'users' AND policyname = 'Users can update own data') THEN
+        CREATE POLICY "Users can update own data" ON users FOR UPDATE USING (auth.uid() = id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'categories' AND policyname = 'Users own categories') THEN
+        CREATE POLICY "Users own categories" ON categories FOR ALL USING (user_id = auth.uid());
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'transactions' AND policyname = 'Users own transactions') THEN
+        CREATE POLICY "Users own transactions" ON transactions FOR ALL USING (user_id = auth.uid());
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'budgets' AND policyname = 'Users own budgets') THEN
+        CREATE POLICY "Users own budgets" ON budgets FOR ALL USING (user_id = auth.uid());
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'tasks' AND policyname = 'Users own tasks') THEN
+        CREATE POLICY "Users own tasks" ON tasks FOR ALL USING (user_id = auth.uid());
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'memories' AND policyname = 'Users own memories') THEN
+        CREATE POLICY "Users own memories" ON memories FOR ALL USING (user_id = auth.uid());
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'timeline_events' AND policyname = 'Users own timeline') THEN
+        CREATE POLICY "Users own timeline" ON timeline_events FOR ALL USING (user_id = auth.uid());
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'subscriptions' AND policyname = 'Users own subscriptions') THEN
+        CREATE POLICY "Users own subscriptions" ON subscriptions FOR ALL USING (user_id = auth.uid());
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'insights' AND policyname = 'Users own insights') THEN
+        CREATE POLICY "Users own insights" ON insights FOR ALL USING (user_id = auth.uid());
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'file_records' AND policyname = 'Users own files') THEN
+        CREATE POLICY "Users own files" ON file_records FOR ALL USING (user_id = auth.uid());
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'notifications' AND policyname = 'Users own notifications') THEN
+        CREATE POLICY "Users own notifications" ON notifications FOR ALL USING (user_id = auth.uid());
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'chat_messages' AND policyname = 'Users own chat messages') THEN
+        CREATE POLICY "Users own chat messages" ON chat_messages FOR ALL USING (user_id = auth.uid());
+    END IF;
+END $$;
 
 -- ============================================================
 -- SEED DEFAULT CATEGORIES
@@ -245,6 +273,6 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_chat_messages_user ON chat_messages(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON chat_messages(user_id, created_at DESC);
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users own chat messages" ON chat_messages FOR ALL USING (user_id = auth.uid());

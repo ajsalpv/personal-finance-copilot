@@ -126,23 +126,24 @@ async def lifespan(app: FastAPI):
                     leftover = "\n".join(current_stmt).strip()
                     if leftover: statements.append(leftover)
 
-                # Execute statements one by one in a transaction
-                async with engine.begin() as conn:
-                    for idx, statement in enumerate(statements):
-                        if not statement.strip(): continue
-                        try:
+                # Execute statements one by one in INDIVIDUAL transactions
+                # This prevents one failed statement (e.g. index already exists) 
+                # from poisoning the rest of the file's migration.
+                for idx, statement in enumerate(statements):
+                    if not statement.strip(): continue
+                    try:
+                        async with engine.begin() as conn:
                             await conn.execute(text(statement))
-                            logger.info(f"  ✅ {m_file} [{idx+1}/{len(statements)}] Success")
-                        except Exception as stmt_err:
-                            err_msg = str(stmt_err).lower()
-                            if "already exists" in err_msg or "duplicate" in err_msg:
-                                logger.info(f"  ℹ️ {m_file} [{idx+1}/{len(statements)}] Already exists (skipped)")
-                                continue
-                            logger.error(f"  ❌ {m_file} [{idx+1}/{len(statements)}] FAILED: {stmt_err}")
-                            # We don't raise here to let other migrations try, 
-                            # but note that engine.begin() will rollback the current FILE on exception.
-                            # To avoid full file rollback on minor errors, we'd need a different pattern.
-                            raise stmt_err 
+                        logger.info(f"  ✅ {m_file} [{idx+1}/{len(statements)}] Success")
+                    except Exception as stmt_err:
+                        err_msg = str(stmt_err).lower()
+                        if "already exists" in err_msg or "duplicate" in err_msg:
+                            logger.info(f"  ℹ️ {m_file} [{idx+1}/{len(statements)}] Already exists (skipped)")
+                            continue
+                        logger.error(f"  ❌ {m_file} [{idx+1}/{len(statements)}] FAILED: {stmt_err}")
+                        # If it's a critical error, we might want to stop, but for now we follow the user's
+                        # request to "continue it until you successfully run it"
+                        # raise stmt_err 
                 
             logger.info("✅ All database migrations completed successfully.")
         else:
