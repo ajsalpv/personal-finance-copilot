@@ -1,109 +1,115 @@
 import logging
+import json
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any
 from sqlalchemy import text
 from app.database import async_session_factory
 from app.services import notification_service
+from app.ai.agents.insight_agent import InsightAgent
 
 logger = logging.getLogger(__name__)
 
 async def detect_anomalies(user_id: str) -> None:
     """
-    Scans recent transactions for the user and detects anomalies based on historical averages.
-    If an anomaly > 200% of category average is found, an insight/notification is created.
+    Scans recent transactions and uses the InsightAgent to detect behavioral anomalies.
+    Replaces the hardcoded >200% threshold with LLM reasoning.
     """
     async with async_session_factory() as db:
-        # Get category averages for the last 3 months
+        # 1. Gather Data context
         three_months_ago = datetime.now(timezone.utc) - timedelta(days=90)
-        
         avg_query = text("""
             SELECT category, AVG(amount) as avg_amount
-            FROM transactions 
-            WHERE user_id = :uid 
-              AND transaction_type = 'expense' 
-              AND date >= :start_date
-              AND category IS NOT NULL
-            GROUP BY category
+            FROM transactions WHERE user_id = :uid AND transaction_type = 'expense' 
+            AND date >= :start_date AND category IS NOT NULL GROUP BY category
         """)
-        
         result = await db.execute(avg_query, {"uid": user_id, "start_date": three_months_ago})
-        averages = {row[0]: row[1] for row in result.fetchall()}
+        averages = {row[0]: float(row[1]) for row in result.fetchall()}
         
-        if not averages:
-            return # Not enough data
-            
-        # Check current month transactions
         month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         recent_query = text("""
-            SELECT id, amount, category, merchant_name, date
-            FROM transactions
-            WHERE user_id = :uid
-              AND transaction_type = 'expense'
-              AND date >= :start_date
-              AND category IS NOT NULL
+            SELECT id, amount, category, merchant_name, date, note
+            FROM transactions WHERE user_id = :uid AND transaction_type = 'expense'
+            AND date >= :start_date AND category IS NOT NULL
         """)
-        
         recent_result = await db.execute(recent_query, {"uid": user_id, "start_date": month_start})
-        recent_txns = recent_result.fetchall()
+        recent_txns = [dict(row._mapping) for row in recent_result.fetchall()]
         
-        for txn in recent_txns:
-            cat = txn[2]
-            amount = float(txn[1])
-            avg = float(averages.get(cat, 0))
+        if not recent_txns:
+            return
+
+        # 2. Delegate to InsightAgent for Reasoning
+        # Convert objects to JSON-serializable for the agent
+        transactions_data = []
+        for t in recent_txns:
+            transactions_data.append({
+                "id": str(t["id"]),
+                "amount": float(t["amount"]),
+                "category": t["category"],
+                "merchant": t["merchant_name"],
+                "date": t["date"].isoformat()
+            })
+
+        anomalies = await InsightAgent.detect_anomalies(transactions_data, averages)
+
+        # 3. Handle Findings
+        for threat in anomalies:
+            msg = threat.get("message", "Unusual spending activity detected.")
+            severity = threat.get("severity", "medium")
             
-            # Anomaly condition: Spend is > 200% of average OR simply very high outlier
-            if avg > 100 and amount > (avg * 2):
-                msg = f"Anomaly detected: ₹{amount:.0f} spent on {cat}. This is {(amount/avg):.1f}x higher than your usual average of ₹{avg:.0f}."
-                
-                # Check if we already notified about this exact transaction
-                exist_check = await db.execute(
-                    text("SELECT 1 FROM insights WHERE user_id = :uid AND message = :msg"),
+            # Idempotency check
+            exist_check = await db.execute(
+                text("SELECT 1 FROM insights WHERE user_id = :uid AND message = :msg"),
+                {"uid": user_id, "msg": msg}
+            )
+            if not exist_check.first():
+                await db.execute(
+                    text("INSERT INTO insights (user_id, insight_type, message) VALUES (:uid, 'anomaly', :msg)"),
                     {"uid": user_id, "msg": msg}
                 )
-                if not exist_check.first():
-                    # Create insight
-                    await db.execute(
-                        text("INSERT INTO insights (user_id, insight_type, message) VALUES (:uid, 'anomaly', :msg)"),
-                        {"uid": user_id, "msg": msg}
-                    )
-                    await db.commit()
-                    
-                    # Notify user
-                    await notification_service.create_notification(
-                        db, user_id, "anomaly_alert", "🚨 Spend Anomaly", msg
-                    )
+                await db.commit()
+                
+                emoji = "🚨" if severity in ["critical", "high"] else "💡"
+                await notification_service.create_notification(
+                    db, user_id, "anomaly_alert", f"{emoji} Spend Insight", msg
+                )
 
 async def generate_monthly_forecast(user_id: str) -> None:
-    """Calculates spending velocity and logs an insight if the user is trending to break budgets."""
+    """Calculates spending velocity and uses LLM to reason about month-end results."""
     try:
         from app.services import budget_service
         async with async_session_factory() as db:
             statuses = await budget_service.get_budget_status(db, user_id)
-            
+            if not statuses:
+                return
+                
             now = datetime.now(timezone.utc)
-            import calendar
-            days_in_month = calendar.monthrange(now.year, now.month)[1]
-            days_passed = now.day
+            user_context = {
+                "day_of_month": now.day,
+                "month_name": now.strftime("%B"),
+                "year": now.year,
+                "is_weekend": now.weekday() >= 5
+            }
             
-            for status in statuses:
-                limit = status["monthly_limit"]
-                spent = status["spent"]
-                cat = status["category"]
+            # Delegate to InsightAgent
+            forecasts = await InsightAgent.generate_forecast(statuses, user_context)
+            
+            for f in forecasts:
+                msg = f.get("message")
+                priority = f.get("priority", "low")
+                if not msg: continue
                 
-                if spent == 0 or days_passed == 0:
-                    continue
-                    
-                daily_velocity = spent / days_passed
-                projected_spend = daily_velocity * days_in_month
-                
-                if projected_spend > limit * 1.1: # Trending 10% over budget
-                    msg = f"Forecast Alert: At your current rate, you will spend ₹{projected_spend:.0f} on {cat} this month (Limit: ₹{limit:.0f})."
-                    
-                    # Store insight
+                # Store if not already exists (basic deduplication by message)
+                chk = await db.execute(text("SELECT 1 FROM insights WHERE user_id = :u AND message = :m"), {"u": user_id, "m": msg})
+                if not chk.first():
                     await db.execute(
                         text("INSERT INTO insights (user_id, insight_type, message) VALUES (:uid, 'forecast', :msg)"),
                         {"uid": user_id, "msg": msg}
                     )
                     await db.commit()
+                    
+                    if priority == "high":
+                        await notification_service.create_notification(
+                            db, user_id, "forecast_warning", "📉 Budget Forecast", msg
+                        )
     except Exception as e:
-        logger.error(f"Error in generate_monthly_forecast: {e}")
+        logger.error(f"Error in generate_monthly_forecast agent loop: {e}")

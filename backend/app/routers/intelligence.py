@@ -14,16 +14,21 @@ async def get_predictive_advisories(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Fetch personalized geopolitical and economic advisories."""
+    """Fetch personalized geopolitical and economic advisories powered by AI."""
     try:
         user_id = str(current_user["id"])
-        # 1. Get user context (simple mock stats for now)
-        mock_stats = {"top_categories": ["fuel", "groceries", "tech"]}
         
-        # 2. Get news and analyze
+        # Build user context for the LLM
+        user_context = {
+            "location": "Kerala, India",
+            "top_categories": ["fuel", "groceries", "tech", "transport"],
+            "current_city": "Kochi"
+        }
+        
+        # AI-powered pipeline: Fetch → Analyze (LLM) → Filter
         news = await NewsIntelligenceService.fetch_global_risks()
-        advisories = await NewsIntelligenceService.analyze_impact(news, {})
-        filtered = await NewsIntelligenceService.filter_relevance(advisories, mock_stats)
+        advisories = await NewsIntelligenceService.analyze_impact(news, user_context)
+        filtered = await NewsIntelligenceService.filter_relevance(advisories, user_context)
         
         return {"advisories": filtered}
     except Exception as e:

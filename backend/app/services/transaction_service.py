@@ -35,6 +35,18 @@ async def create_transaction(
     enc_upi = encrypt(upi_id) if upi_id else None
     enc_note = encrypt(note) if note else None
 
+    # Automated Categorization (AI Agent)
+    if not category:
+        from app.ai.agents.categorization_agent import CategorizationAgent
+        # Fetch current categories for the user to help the AI map
+        cat_result = await db.execute(text("SELECT name FROM categories WHERE user_id = :uid OR user_id IS NULL"), {"uid": user_id})
+        allowed_cats = [r[0] for r in cat_result.fetchall()]
+        if not allowed_cats:
+            allowed_cats = ["Food & Dining", "Transport", "Shopping", "Entertainment", "Health", "Investment", "Bills", "Others"]
+            
+        category = await CategorizationAgent.categorize_transaction(merchant_name, note, amount, allowed_cats)
+        logger.info(f"AI Agent automatically categorized transaction as: {category}")
+
     result = await db.execute(
         text("""
             INSERT INTO transactions 
