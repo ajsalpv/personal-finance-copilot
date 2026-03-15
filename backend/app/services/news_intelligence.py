@@ -69,7 +69,7 @@ class NewsIntelligenceService:
                 impact_desc = "Direct impact on Crude Oil supply chains. Expect LPG and Petrol price hikes in India in 1-2 weeks."
             elif "inflation" in event['keywords']:
                 impact_desc = "Local inflation indicators rising. Borrowing costs and daily grocery prices may increase."
-            elif "kerala" in event['keywords'].lower() or "rain" in event['keywords']:
+            elif "kerala" in event['keywords'] or "rain" in event['keywords']:
                 impact_desc = "High risk of travel disruption and resource shortages in Kerala due to weather."
             elif "subsidy" in event['keywords']:
                 impact_desc = "New policy incentive detected. High potential for personal savings on green tech."
@@ -94,7 +94,7 @@ class NewsIntelligenceService:
         """
         filtered = []
         user_cats = user_stats.get("top_categories", [])
-        user_city = user_context.get("current_city", "Unknown")
+        user_city = user_stats.get("current_city", "Unknown")
 
         for advisory in advisories:
             priority = "medium"
