@@ -100,7 +100,6 @@ async def lifespan(app: FastAPI):
         migrations_dir = os.path.abspath(os.path.join(base_dir, "..", "migrations"))
         
         if os.path.exists(migrations_dir):
-            # Get all .sql files sorted alphabetically
             migration_files = sorted([f for f in os.listdir(migrations_dir) if f.endswith(".sql")])
             logger.info(f"🔍 Found {len(migration_files)} migration files: {migration_files}")
             
@@ -111,24 +110,39 @@ async def lifespan(app: FastAPI):
                 with open(m_path, "r", encoding="utf-8") as f:
                     sql_script = f.read()
                 
-                # Split by semicolon, being careful not to split inside functions/blocks if possible
-                # For simple schemas, this works. For complex ones, we'd need a regex or parser.
-                statements = [s.strip() for s in sql_script.split(";") if s.strip()]
-                
+                # Robust Splitting: Respect $$ blocks
+                statements = []
+                current_stmt = []
+                in_dollar_block = False
+                for line in sql_script.splitlines():
+                    clean_line = line.split("--")[0].strip()
+                    current_stmt.append(line)
+                    if "$$" in clean_line:
+                        in_dollar_block = not in_dollar_block
+                    if ";" in clean_line and not in_dollar_block:
+                        statements.append("\n".join(current_stmt))
+                        current_stmt = []
+                if current_stmt:
+                    leftover = "\n".join(current_stmt).strip()
+                    if leftover: statements.append(leftover)
+
+                # Execute statements one by one in a transaction
                 async with engine.begin() as conn:
                     for idx, statement in enumerate(statements):
+                        if not statement.strip(): continue
                         try:
-                            # Clean up comment blocks
-                            clean_stmt = "\n".join([line for line in statement.split("\n") if not line.strip().startswith("--")])
-                            if not clean_stmt.strip():
-                                continue
-                                
-                            await conn.execute(text(clean_stmt))
+                            await conn.execute(text(statement))
+                            logger.info(f"  ✅ {m_file} [{idx+1}/{len(statements)}] Success")
                         except Exception as stmt_err:
                             err_msg = str(stmt_err).lower()
                             if "already exists" in err_msg or "duplicate" in err_msg:
+                                logger.info(f"  ℹ️ {m_file} [{idx+1}/{len(statements)}] Already exists (skipped)")
                                 continue
-                            logger.warning(f"⚠️ {m_file} Statement {idx+1} warning: {stmt_err}")
+                            logger.error(f"  ❌ {m_file} [{idx+1}/{len(statements)}] FAILED: {stmt_err}")
+                            # We don't raise here to let other migrations try, 
+                            # but note that engine.begin() will rollback the current FILE on exception.
+                            # To avoid full file rollback on minor errors, we'd need a different pattern.
+                            raise stmt_err 
                 
             logger.info("✅ All database migrations completed successfully.")
         else:
