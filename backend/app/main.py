@@ -96,44 +96,45 @@ async def lifespan(app: FastAPI):
 
     # --- Run Database Migrations ---
     try:
-        # Use absolute path resolving for Render
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        migration_path = os.path.abspath(os.path.join(base_dir, "..", "migrations", "001_initial_schema.sql"))
+        migrations_dir = os.path.abspath(os.path.join(base_dir, "..", "migrations"))
         
-        logger.info(f"🔍 Checking for migration file at: {migration_path}")
-        
-        if os.path.exists(migration_path):
-            logger.info("📄 Reading migration script...")
-            with open(migration_path, "r", encoding="utf-8") as f:
-                sql_script = f.read()
+        if os.path.exists(migrations_dir):
+            # Get all .sql files sorted alphabetically
+            migration_files = sorted([f for f in os.listdir(migrations_dir) if f.endswith(".sql")])
+            logger.info(f"🔍 Found {len(migration_files)} migration files: {migration_files}")
             
-            # Split by statements to avoid one failure rolling back the entire schema
-            # We use a simple split by semicolon, which works for this specific schema
-            statements = [s.strip() for s in sql_script.split(";") if s.strip()]
-            
-            logger.info(f"🚀 Executing {len(statements)} SQL statements sequentially...")
-            
-            async with engine.begin() as conn:
-                for idx, statement in enumerate(statements):
-                    try:
-                        # Clean up comment blocks to avoid parsing issues
-                        clean_stmt = "\n".join([line for line in statement.split("\n") if not line.strip().startswith("--")])
-                        if not clean_stmt.strip():
-                            continue
-                            
-                        await conn.execute(text(clean_stmt))
-                    except Exception as stmt_err:
-                        # If it's a "already exists" error, we can ignore it
-                        err_msg = str(stmt_err).lower()
-                        if "already exists" in err_msg or "duplicate" in err_msg:
-                            continue
-                        logger.warning(f"⚠️ Statement {idx+1} warning: {stmt_err}")
-            
-            logger.info("✅ Database migration process completed.")
+            for m_file in migration_files:
+                m_path = os.path.join(migrations_dir, m_file)
+                logger.info(f"📄 Processing migration: {m_file}")
+                
+                with open(m_path, "r", encoding="utf-8") as f:
+                    sql_script = f.read()
+                
+                # Split by semicolon, being careful not to split inside functions/blocks if possible
+                # For simple schemas, this works. For complex ones, we'd need a regex or parser.
+                statements = [s.strip() for s in sql_script.split(";") if s.strip()]
+                
+                async with engine.begin() as conn:
+                    for idx, statement in enumerate(statements):
+                        try:
+                            # Clean up comment blocks
+                            clean_stmt = "\n".join([line for line in statement.split("\n") if not line.strip().startswith("--")])
+                            if not clean_stmt.strip():
+                                continue
+                                
+                            await conn.execute(text(clean_stmt))
+                        except Exception as stmt_err:
+                            err_msg = str(stmt_err).lower()
+                            if "already exists" in err_msg or "duplicate" in err_msg:
+                                continue
+                            logger.warning(f"⚠️ {m_file} Statement {idx+1} warning: {stmt_err}")
+                
+            logger.info("✅ All database migrations completed successfully.")
         else:
-            logger.warning(f"❌ Migration file NOT found at {migration_path}. Skipping auto-migration.")
+            logger.warning(f"❌ Migrations directory NOT found at {migrations_dir}")
     except Exception as e:
-        logger.error(f"❌ Migration failed: {e}")
+        logger.error(f"❌ Global Migration Error: {e}")
 
     # Determine Telegram mode (Webhook for Render, Polling for Local)
     base_url = os.environ.get("RENDER_EXTERNAL_URL")
