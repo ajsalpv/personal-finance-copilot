@@ -186,4 +186,53 @@ class ApiClient {
       throw Exception('Failed to delete selected messages: ${response.statusCode}');
     }
   }
+
+  // --- Location Intelligence ---
+  static Future<void> logLocation(double lat, double lng, {String? city, String? locality}) async {
+    final url = Uri.parse('$baseUrl/locations/log');
+    final headers = await _getHeaders();
+    
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode({
+        'latitude': lat,
+        'longitude': lng,
+        'city': city,
+        'locality': locality,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      print('Warning: Failed to log location');
+    }
+  }
+
+  static Future<Map<String, dynamic>> checkTravelAnomaly() async {
+    final url = Uri.parse('$baseUrl/locations/anomaly');
+    final headers = await _getHeaders();
+    final response = await http.get(url, headers: headers);
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    return {'anomaly': {'is_traveling': false}};
+  }
+
+  // --- Strategic Intelligence ---
+  static Future<List<dynamic>> getIntelligenceAdvisories() async {
+    final url = Uri.parse('$baseUrl/intelligence/advisories');
+    final headers = await _getHeaders();
+    final response = await http.get(url, headers: headers);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['advisories'] ?? [];
+    }
+    return [];
+  }
+
+  static Future<Map<String, dynamic>> getEmergencyReport(String region) async {
+    final url = Uri.parse('$baseUrl/intelligence/emergency?region=$region');
+    final headers = await _getHeaders();
+    final response = await http.get(url, headers: headers);
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Failed to load emergency report');
+  }
 }

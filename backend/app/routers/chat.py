@@ -58,8 +58,8 @@ async def chat_with_callista(
             reply=reply, 
             thread_id=thread_id,
             memory_recalled=memory_recalled,
-            user_message_id=str(user_msg.id),
-            bot_message_id=str(bot_msg.id)
+            user_message_id=str(user_msg["id"]),
+            bot_message_id=str(bot_msg["id"])
         )
         
     except Exception as e:

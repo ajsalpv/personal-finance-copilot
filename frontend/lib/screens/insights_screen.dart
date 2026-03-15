@@ -21,37 +21,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
   Future<void> _loadInsights() async {
     setState(() => _isLoading = true);
     try {
-      // Simulation of multi-agent intelligence results
+      final data = await ApiClient.getIntelligenceAdvisories();
       setState(() {
-        _advisories = [
-          {
-            "event": "War in Middle East escalates",
-            "impact": "Direct pressure on Crude Oil supply chains. Expected LPG and Petrol price hikes in India.",
-            "suggestion": "Consider booking your LPG refill early and refilling your vehicle within 48 hours.",
-            "level": "Critical",
-            "confidence": "85%",
-            "priority": "high",
-            "region": "Global/India"
-          },
-          {
-            "event": "Heavy monsoon predicted for Southern India",
-            "impact": "High risk of travel disruption and resource shortages in Kerala due to weather.",
-            "suggestion": "Avoid non-essential long-distance travel in Kerala. Ensure power banks and basic groceries are stocked.",
-            "level": "Warning",
-            "confidence": "90%",
-            "priority": "high",
-            "region": "Kerala"
-          },
-          {
-            "event": "New central subsidy for electric vehicles",
-            "impact": "New policy incentive detected. High potential for personal savings on green tech.",
-            "suggestion": "Check eligibility for the new EV scheme if you were planning a vehicle purchase.",
-            "level": "Opportunity",
-            "confidence": "70%",
-            "priority": "medium",
-            "region": "India"
-          }
-        ];
+        _advisories = data;
       });
     } catch (e) {
       print("Error loading insights: $e");
