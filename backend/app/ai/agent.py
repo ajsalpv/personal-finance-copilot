@@ -3,11 +3,13 @@ from datetime import datetime, timezone, timedelta
 import json
 import logging
 import os
+import time
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 from langgraph.graph import StateGraph, END, START
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.config import get_settings
 from app.database import async_session_factory
@@ -22,13 +24,39 @@ from app.services.location_service import LocationService
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-def get_llm(with_tools=None):
-    """Returns a fresh LLM instance with latest settings (force refreshed)."""
-    # Force reload environment to catch dynamic .env changes
+# --- TOKEN & COST OPTIMIZATION CACHE ---
+AI_CACHE = {
+    "triage": {"data": None, "expiry": 0},
+    "travel": {"data": None, "expiry": 0},
+}
+CACHE_TTL = 3600  # 1 hour
+
+def get_llm(with_tools=None, model_type="premium"):
+    """
+    Returns a fresh LLM instance. 
+    model_type: 
+      - 'premium': llama-3.3-70b (High reasoning, low limits)
+      - 'utility': llama-3.1-8b (Fast, high limits, for routing/reflection)
+      - 'gemini': gemini-1.5-flash (Highest free limits, great fallback)
+    """
     from dotenv import load_dotenv
     load_dotenv(override=True)
     
-    key = os.getenv("GROQ_API_KEY")
+    # Check for Gemini first if requested or as fallback
+    google_key = os.getenv("GOOGLE_API_KEY")
+    groq_key = os.getenv("GROQ_API_KEY")
+
+    # Force Gemini usage if User requested it via 'gemini' model_type or if Groq key is missing
+    if model_type == "gemini" or (not groq_key and google_key):
+        if google_key:
+            return ChatGoogleGenerativeAI(
+                model="gemini-1.5-flash",
+                google_api_key=google_key,
+                temperature=0,
+            )
+
+    # Default to Groq
+    key = groq_key
     if not key or not key.startswith("gsk_"):
         current_settings = get_settings()
         key = current_settings.GROQ_API_KEY
@@ -36,14 +64,10 @@ def get_llm(with_tools=None):
     if key:
         key = key.strip().replace('"', '').replace("'", "")
 
-    # HEX DIAGNOSTIC
-    import binascii
-    key_hex = binascii.hexlify(key.encode()).decode() if key else "None"
-    with open("key_diag.log", "a") as f:
-        f.write(f"{datetime.now()}: {key[:10]}... HEX={key_hex}\n")
-
+    model_name = "llama-3.3-70b-versatile" if model_type == "premium" else "llama-3.1-8b-instant"
+    
     _llm = ChatGroq(
-        model="llama-3.3-70b-versatile",
+        model=model_name,
         api_key=key,
         temperature=0,
     )
@@ -60,13 +84,15 @@ async def call_specialist(state: AgentState):
         get_call_concierge_prompt(),
         SystemMessage(content=f"LONG-TERM CONTEXT:\n{memory_context}")
     ] + state["messages"]
-    response = await get_llm().ainvoke(messages)
+    # Specialist can use premium for better dialogue
+    response = await get_llm(model_type="premium").ainvoke(messages)
     return {"messages": [response]}
 
 async def system_manager(state: AgentState):
-    """General assistant logic with tool access."""
+    """General assistant logic with tool access (Premium reasoning)."""
     try:
-        llm_with_tools = get_llm(with_tools=all_tools)
+        # Finance and tool calling requires 70B for accuracy
+        llm_with_tools = get_llm(with_tools=all_tools, model_type="premium")
         memory_context = state.get("memory_context", "")
         messages = [
             SystemMessage(
@@ -83,6 +109,11 @@ async def system_manager(state: AgentState):
         return {"messages": [response]}
     except Exception as e:
         logger.error(f"System Manager Node Error: {repr(e)}")
+        # If 429 occurs, final fallback is to notify the user or use a utility model
+        if "429" in str(e):
+             llm_fallback = get_llm(model_type="utility") # Try 8B fallback
+             response = await llm_fallback.ainvoke(messages)
+             return {"messages": [response]}
         return {"messages": [AIMessage(content=f"SYSTEM_ERROR: {repr(e)}")]}
 
 async def vision_expert(state: AgentState):
@@ -102,11 +133,17 @@ async def vision_expert(state: AgentState):
 # --- PREDICTIVE NODES ---
 
 async def advisory_triage(state: AgentState):
-    """[PHASE 15+] Triages global news for personal relevance with dynamic context."""
+    """[PHASE 15+] Triages global news. Optimized with 60-min cache."""
     try:
+        now_ts = time.time()
+        # 1. Use Cache if valid
+        if AI_CACHE["triage"]["data"] and now_ts < AI_CACHE["triage"]["expiry"]:
+            logger.info("Using cached Advisory Briefs")
+            return {"advisory_briefs": AI_CACHE["triage"]["data"]}
+
         user_id = state.get("user_id", "default_user")
         
-        # 1. Dynamically Assemble Context
+        # 2. Dynamically Assemble Context
         async with async_session_factory() as db:
             loc_history = await LocationService.get_recent_locations(db, user_id, limit=1)
             current_city = loc_history[0]["city"] if loc_history else "Unknown"
@@ -123,9 +160,14 @@ async def advisory_triage(state: AgentState):
             "current_city": current_city
         }
         
+        # 3. Fetch and Analyze (Uses 70B for impact reasoning)
         news = await NewsIntelligenceService.fetch_global_risks()
         advisories = await NewsIntelligenceService.analyze_impact(news, user_context)
         relevant_briefs = await NewsIntelligenceService.filter_relevance(advisories, user_context)
+        
+        # 4. Update Cache
+        AI_CACHE["triage"]["data"] = relevant_briefs
+        AI_CACHE["triage"]["expiry"] = now_ts + CACHE_TTL
         
         return {"advisory_briefs": relevant_briefs}
     except Exception as e:
@@ -133,13 +175,21 @@ async def advisory_triage(state: AgentState):
         return {"advisory_briefs": []}
 
 async def travel_intelligence(state: AgentState):
-    """[PHASE 18] Detects travel anomalies and updates context."""
+    """[PHASE 18] Detects travel anomalies. Optimized with 60-min cache."""
     try:
+        now_ts = time.time()
+        # Check cache (global is fine for now)
+        if AI_CACHE["travel"]["data"] and now_ts < AI_CACHE["travel"]["expiry"]:
+            return state
+
         user_id = state.get("user_id", "default_user")
         async with async_session_factory() as db:
             anomaly = await LocationService.detect_travel_anomaly(db, user_id)
             if anomaly and anomaly.get("is_traveling"):
                 state["messages"].append(AIMessage(content=f"System Alert: Travel anomaly detected. You appear to be in {anomaly['current_city']}. {anomaly.get('reasoning', '')}"))
+                
+        AI_CACHE["travel"]["data"] = True
+        AI_CACHE["travel"]["expiry"] = now_ts + CACHE_TTL
     except Exception as e:
         logger.error(f"Travel Intelligence Node Error: {e}")
     return state
@@ -160,7 +210,8 @@ async def supervisor(state: AgentState):
         Only return JSON."""
         
         messages = [SystemMessage(content=system_prompt)] + state["messages"]
-        response = await get_llm().ainvoke(messages)
+        # Use utility model (8B) to save 70B tokens
+        response = await get_llm(model_type="utility").ainvoke(messages)
         
         cleaned = response.content.strip()
         if cleaned.startswith("```"):
@@ -189,7 +240,8 @@ async def self_reflection(state: AgentState):
     Only return JSON."""
     
     messages = [SystemMessage(content=system_prompt), HumanMessage(content=last_msg)]
-    response = await get_llm().ainvoke(messages)
+    # Use utility model (8B)
+    response = await get_llm(model_type="utility").ainvoke(messages)
     
     try:
         cleaned = response.content.strip()

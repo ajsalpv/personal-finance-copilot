@@ -35,6 +35,7 @@ soundfile==0.12.1
 # --- AI / LLM (ready for Phase 2) ---
 langchain==0.3.13
 langchain-groq==0.2.4
+langchain-google-genai==2.0.8
 langgraph==0.2.60
 
 # --- Utilities ---

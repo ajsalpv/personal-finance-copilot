@@ -11,6 +11,7 @@ from datetime import datetime, timezone, timedelta
 from langchain_core.runnables.config import RunnableConfig
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
+import time
 
 from app.database import async_session_factory
 from app.config import get_settings
@@ -20,6 +21,13 @@ from app.services import (
 )
 
 logger = logging.getLogger(__name__)
+
+# --- TOOL CACHE ---
+TOOL_CACHE = {
+    "strategic": {"data": None, "expiry": 0},
+    "emergency": {"data": None, "expiry": 0}
+}
+CACHE_TTL = 3600 # 1 hour
 
 async def _get_user_id(config: RunnableConfig) -> str:
     """Helper to extract user_id from RunnableConfig."""
@@ -372,6 +380,11 @@ async def get_strategic_advisory(config: RunnableConfig = None) -> str:
         return "Error: User context not found."
     
     try:
+        now_ts = time.time()
+        if TOOL_CACHE["strategic"]["data"] and now_ts < TOOL_CACHE["strategic"]["expiry"]:
+            logger.info("Using cached strategic output")
+            return TOOL_CACHE["strategic"]["data"]
+
         async with async_session_factory() as db:
             # 1. Gather dynamic context
             now = datetime.now(timezone.utc)
@@ -411,6 +424,8 @@ async def get_strategic_advisory(config: RunnableConfig = None) -> str:
         for item in col_index['items']:
             result += f"  - {item['name']}: {item['trend']} ({item['status']})\n"
             
+        TOOL_CACHE["strategic"]["data"] = result
+        TOOL_CACHE["strategic"]["expiry"] = now_ts + CACHE_TTL
         return result
     except Exception as e:
         logger.error(f"Error in strategic advisory: {e}")
@@ -433,6 +448,10 @@ async def get_emergency_readiness(config: RunnableConfig = None) -> str:
     """
     user_id = await _get_user_id(config)
     try:
+        now_ts = time.time()
+        if TOOL_CACHE["emergency"]["data"] and now_ts < TOOL_CACHE["emergency"]["expiry"]:
+            return TOOL_CACHE["emergency"]["data"]
+
         async with async_session_factory() as db:
             # Detect user's current region dynamically
             loc_history = await location_service.LocationService.get_recent_locations(db, user_id, limit=1)
@@ -449,6 +468,8 @@ async def get_emergency_readiness(config: RunnableConfig = None) -> str:
             for step in alert['prep']:
                 result += f"    • {step}\n"
         
+        TOOL_CACHE["emergency"]["data"] = result
+        TOOL_CACHE["emergency"]["expiry"] = now_ts + CACHE_TTL
         return result
     except Exception as e:
         logger.error(f"Error in emergency readiness: {e}")
