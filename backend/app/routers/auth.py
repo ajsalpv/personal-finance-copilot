@@ -24,52 +24,57 @@ router = APIRouter()
 @router.post("/register", response_model=TokenResponse)
 async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
     """Register a new user."""
-    # Check if email already exists
-    existing = await db.execute(
-        text("SELECT id FROM users WHERE email = :email"),
-        {"email": body.email},
-    )
-    if existing.first():
-        raise HTTPException(status_code=400, detail="Email already registered")
+    try:
+        # Check if email already exists
+        existing = await db.execute(
+            text("SELECT id FROM users WHERE email = :email"),
+            {"email": body.email},
+        )
+        if existing.first():
+            raise HTTPException(status_code=400, detail="Email already registered")
 
-    # Create user
-    hashed = hash_password(body.password)
-    result = await db.execute(
-        text("""
-            INSERT INTO users (name, email, password_hash, telegram_id)
-            VALUES (:name, :email, :hash, :telegram_id)
-            RETURNING id, name, email, telegram_id, created_at
-        """),
-        {
-            "name": body.name, "email": body.email,
-            "hash": hashed, "telegram_id": body.telegram_id,
-        },
-    )
-    await db.commit()
-    user = result.mappings().first()
+        # Create user
+        hashed = hash_password(body.password)
+        result = await db.execute(
+            text("""
+                INSERT INTO users (name, email, password_hash, telegram_id)
+                VALUES (:name, :email, :hash, :telegram_id)
+                RETURNING id, name, email, telegram_id, created_at
+            """),
+            {
+                "name": body.name, "email": body.email,
+                "hash": hashed, "telegram_id": body.telegram_id,
+            },
+        )
+        await db.commit()
+        user = result.mappings().first()
 
-    # Copy default categories for this user
-    await db.execute(
-        text("""
-            INSERT INTO categories (user_id, name, type, icon, is_default)
-            SELECT :user_id, name, type, icon, is_default
-            FROM categories WHERE user_id IS NULL
-        """),
-        {"user_id": str(user["id"])},
-    )
-    await db.commit()
+        # Copy default categories for this user
+        await db.execute(
+            text("""
+                INSERT INTO categories (user_id, name, type, icon, is_default)
+                SELECT :user_id, name, type, icon, is_default
+                FROM categories WHERE user_id IS NULL
+            """),
+            {"user_id": str(user["id"])},
+        )
+        await db.commit()
 
-    token = create_access_token({"sub": str(user["id"])})
-    return TokenResponse(
-        access_token=token,
-        user=UserResponse(
-            id=str(user["id"]),
-            name=user["name"],
-            email=user["email"],
-            telegram_id=user["telegram_id"],
-            created_at=user["created_at"],
-        ),
-    )
+        token = create_access_token({"sub": str(user["id"])})
+        return TokenResponse(
+            access_token=token,
+            user=UserResponse(
+                id=str(user["id"]),
+                name=user["name"],
+                email=user["email"],
+                telegram_id=user["telegram_id"],
+                created_at=user["created_at"],
+            ),
+        )
+    except Exception as e:
+        import traceback
+        err_str = traceback.format_exc()
+        raise HTTPException(status_code=500, detail=f"CRASH: {str(e)} | Tr: {err_str}")
 
 
 @router.post("/login", response_model=TokenResponse)
