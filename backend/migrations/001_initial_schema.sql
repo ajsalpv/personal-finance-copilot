@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS categories (
     UNIQUE(user_id, name, type)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_default_unique ON categories (name, type) WHERE user_id IS NULL;
+
 -- ============================================================
 -- TRANSACTIONS
 -- ============================================================
@@ -258,7 +260,7 @@ INSERT INTO categories (id, user_id, name, type, icon, is_default) VALUES
     (uuid_generate_v4(), NULL, 'Investment', 'income', '📈', true),
     (uuid_generate_v4(), NULL, 'Gift', 'income', '🎁', true),
     (uuid_generate_v4(), NULL, 'Other', 'income', '📌', true)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (name, type) WHERE user_id IS NULL DO NOTHING;
 
 -- ============================================================
 -- CHAT MESSAGES (Persistence)
