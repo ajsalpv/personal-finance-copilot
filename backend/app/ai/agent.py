@@ -80,10 +80,12 @@ def get_llm(with_tools=None, model_type="premium"):
 async def call_specialist(state: AgentState):
     """Handles call-related queries."""
     memory_context = state.get("memory_context", "")
+    # Truncate history to last 10 messages for specialists
+    history = state["messages"][-10:]
     messages = [
         get_call_concierge_prompt(),
         SystemMessage(content=f"LONG-TERM CONTEXT:\n{memory_context}")
-    ] + state["messages"]
+    ] + history
     # Specialist can use premium for better dialogue
     response = await get_llm(model_type="premium").ainvoke(messages)
     return {"messages": [response]}
@@ -94,6 +96,18 @@ async def system_manager(state: AgentState):
         # Finance and tool calling requires 70B for accuracy
         llm_with_tools = get_llm(with_tools=all_tools, model_type="premium")
         memory_context = state.get("memory_context", "")
+        advisories = state.get("advisory_briefs", [])
+        
+        advisory_text = ""
+        if advisories:
+            advisory_text = "\n\nREAL-TIME INTELLIGENCE / NEWS:\n" + "\n".join([
+                f"- {a['event']}: {a['impact']} (Suggestion: {a['suggestion']})"
+                for a in advisories[:3] # Show top 3 for token efficiency
+            ])
+
+        # Truncate history to last 15 messages to stay within TPM limits
+        history = state["messages"][-15:]
+
         messages = [
             SystemMessage(
                 content=(
@@ -102,9 +116,10 @@ async def system_manager(state: AgentState):
                     "CRITICAL: Use the official tool-calling mechanism ONLY. Never use XML tags like <function> or <tool>. "
                     "If you need to perform an action, call a tool. If not, just reply naturally.\n\n"
                     f"LONG-TERM USER CONTEXT:\n{memory_context}"
+                    f"{advisory_text}"
                 )
             )
-        ] + state["messages"]
+        ] + history
         response = await llm_with_tools.ainvoke(messages)
         return {"messages": [response]}
     except Exception as e:
@@ -119,6 +134,8 @@ async def system_manager(state: AgentState):
 async def vision_expert(state: AgentState):
     """Handles image and screen-related queries."""
     memory_context = state.get("memory_context", "")
+    # Truncate history to last 10 messages for specialists
+    history = state["messages"][-10:]
     messages = [
         SystemMessage(
             content=(
@@ -126,8 +143,8 @@ async def vision_expert(state: AgentState):
                 f"LTM Context: {memory_context}"
             )
         )
-    ] + state["messages"]
-    response = await get_llm().ainvoke(messages)
+    ] + history
+    response = await get_llm(model_type="premium").ainvoke(messages)
     return {"messages": [response]}
 
 # --- PREDICTIVE NODES ---
@@ -209,7 +226,20 @@ async def supervisor(state: AgentState):
         {"next": "call/vision/system", "reasoning": "short explanation"}
         Only return JSON."""
         
-        messages = [SystemMessage(content=system_prompt)] + state["messages"]
+        # Truncate history for supervisor
+        history = state["messages"][-10:]
+        
+        memory_context = state.get("memory_context", "")
+        advisories = state.get("advisory_briefs", [])
+        advisory_summary = f"({len(advisories)} news events found)" if advisories else "(No news alerts)"
+
+        full_prompt = (
+            f"{system_prompt}\n\n"
+            f"CTX: {memory_context[:500]}\n"
+            f"NEWS: {advisory_summary}"
+        )
+
+        messages = [SystemMessage(content=full_prompt)] + history
         # Use utility model (8B) to save 70B tokens
         response = await get_llm(model_type="utility").ainvoke(messages)
         
