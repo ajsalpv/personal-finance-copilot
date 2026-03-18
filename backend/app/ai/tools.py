@@ -556,6 +556,28 @@ async def get_emergency_readiness(config: RunnableConfig = None) -> str:
         logger.error(f"Error in emergency readiness: {e}")
         return "Failed to retrieve local risk data."
 
+@tool
+async def search_web(query: str) -> str:
+    """
+    Searches the live web for current events, news, and general information.
+    Required argument: query (str).
+    Use this when the user asks for anything real-world or current that isn't in your local news context.
+    """
+    from duckduckgo_search import DDGS
+    try:
+        results = []
+        with DDGS() as ddgs:
+            for r in ddgs.text(query, max_results=5):
+                results.append(f"Title: {r['title']}\nSource: {r['href']}\nBody: {r['body']}\n")
+        
+        if not results:
+            return f"No live results found for '{query}'."
+        
+        return "WEB SEARCH RESULTS:\n\n" + "\n".join(results)
+    except Exception as e:
+        logger.error(f"Error in web search: {e}")
+        return f"Failed to search the web: {str(e)}"
+
 # List of all available tools
 all_tools = [
     log_expense,
