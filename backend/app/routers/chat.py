@@ -13,6 +13,7 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     message: str
     thread_id: str | None = None
+    image_base64: str | None = None
 
 class ChatResponse(BaseModel):
     reply: str
@@ -43,7 +44,8 @@ async def chat_with_callista(
         agent_result = await process_message(
             thread_id=thread_id,
             user_id=user_id,
-            message=payload.message
+            message=payload.message,
+            image_base64=payload.image_base64
         )
         
         reply = agent_result["reply"]

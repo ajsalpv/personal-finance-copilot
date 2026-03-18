@@ -113,6 +113,9 @@ async def system_manager(state: AgentState):
                 content=(
                     "You are Callista, the core system manager. Use tools for finance, system tasks, and memory. "
                     "Tone: Premium/Jarvis.\n\n"
+                    "REAL-TIME ACCESS: You HAVE access to real-time news, current events, weather, and financial trends. "
+                    "If you see 'REAL-TIME INTELLIGENCE' below, use that as your primary source of truth for the world today. "
+                    "Never say you don't have access to current events.\n\n"
                     "CRITICAL: Use the official tool-calling mechanism ONLY. Never use XML tags like <function> or <tool>. "
                     "If you need to perform an action, call a tool. If not, just reply naturally.\n\n"
                     f"LONG-TERM USER CONTEXT:\n{memory_context}"
@@ -120,6 +123,17 @@ async def system_manager(state: AgentState):
                 )
             )
         ] + history
+        
+        # If there's an image, add it to the message content for multi-modal reasoning
+        image_base64 = state.get("image_base64")
+        if image_base64:
+             messages[-1] = HumanMessage(
+                 content=[
+                     {"type": "text", "text": messages[-1].content},
+                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
+                 ]
+             )
+
         response = await llm_with_tools.ainvoke(messages)
         return {"messages": [response]}
     except Exception as e:
@@ -136,15 +150,31 @@ async def vision_expert(state: AgentState):
     memory_context = state.get("memory_context", "")
     # Truncate history to last 10 messages for specialists
     history = state["messages"][-10:]
+    
+    # "Meta Glass" Vision System Message
+    system_instr = (
+        "You are Callista's Vision Intelligence System. You are current observing the user's environment in real-time. "
+        "Describe what you see with a premium, proactive JARVIS-like tone. "
+        "Analyze objects, text, and context in the camera frame to assist the user proactively."
+    )
+
     messages = [
-        SystemMessage(
-            content=(
-                "You are Callista's Vision Expert. Use vision sensors to help the user. "
-                f"LTM Context: {memory_context}"
-            )
-        )
+        SystemMessage(content=f"{system_instr}\n\nLTM Context: {memory_context}")
     ] + history
-    response = await get_llm(model_type="premium").ainvoke(messages)
+    
+    # Inject the image if present
+    image_base64 = state.get("image_base64")
+    if image_base64:
+        # Wrap the last human message with the image content
+        messages[-1] = HumanMessage(
+            content=[
+                {"type": "text", "text": messages[-1].content},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
+            ]
+        )
+    
+    # Use Gemini for superior vision processing
+    response = await get_llm(model_type="gemini").ainvoke(messages)
     return {"messages": [response]}
 
 # --- PREDICTIVE NODES ---
@@ -341,13 +371,14 @@ workflow.add_edge("reflect", END)
 memory = MemorySaver()
 agent_executor = workflow.compile(checkpointer=memory)
 
-async def process_message(thread_id: str, user_id: str, message: str) -> dict:
+async def process_message(thread_id: str, user_id: str, message: str, image_base64: str = None) -> dict:
     try:
         config = {"configurable": {"thread_id": thread_id, "user_id": user_id}}
         result = await agent_executor.ainvoke(
             {
                 "messages": [HumanMessage(content=message)],
                 "user_id": user_id,
+                "image_base64": image_base64,
             },
             config=config,
         )
