@@ -21,6 +21,7 @@ class UserResponse(BaseModel):
     name: str
     email: str
     telegram_id: Optional[str] = None
+    is_voice_enrolled: bool = False
     created_at: datetime
 
 

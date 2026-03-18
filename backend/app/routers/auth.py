@@ -68,6 +68,7 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
                 name=user["name"],
                 email=user["email"],
                 telegram_id=user["telegram_id"],
+                is_voice_enrolled=False,
                 created_at=user["created_at"],
             ),
         )
@@ -81,7 +82,7 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
 async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
     """Login and get JWT token."""
     result = await db.execute(
-        text("SELECT id, name, email, telegram_id, password_hash, created_at FROM users WHERE email = :email"),
+        text("SELECT id, name, email, telegram_id, password_hash, voice_embedding, created_at FROM users WHERE email = :email"),
         {"email": body.email},
     )
     user = result.mappings().first()
@@ -96,6 +97,7 @@ async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
             name=user["name"],
             email=user["email"],
             telegram_id=user["telegram_id"],
+            is_voice_enrolled=user.get("voice_embedding") is not None,
             created_at=user["created_at"],
         ),
     )
@@ -109,6 +111,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         name=current_user["name"],
         email=current_user["email"],
         telegram_id=current_user.get("telegram_id"),
+        is_voice_enrolled=current_user.get("voice_embedding") is not None,
         created_at=current_user["created_at"],
     )
 

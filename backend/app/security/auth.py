@@ -70,7 +70,7 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
     result = await db.execute(
-        text("SELECT id, name, email, telegram_id, created_at FROM users WHERE id = :id"),
+        text("SELECT id, name, email, telegram_id, voice_embedding, created_at FROM users WHERE id = :id"),
         {"id": user_id},
     )
     user = result.mappings().first()

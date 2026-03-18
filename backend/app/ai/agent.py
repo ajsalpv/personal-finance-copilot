@@ -111,10 +111,10 @@ async def system_manager(state: AgentState):
         messages = [
             SystemMessage(
                 content=(
-                    "You are Callista, the core system manager. Use tools for finance, system tasks, and memory. "
+                    "You are Callista, the core system manager. Use tools for finance, system tasks, memory, and web search. "
                     "Tone: Premium/Jarvis.\n\n"
-                    "REAL-TIME ACCESS: You HAVE access to real-time news, current events, weather, and financial trends. "
-                    "If you see 'REAL-TIME INTELLIGENCE' below, use that as your primary source of truth for the world today. "
+                    "REAL-TIME ACCESS: You HAVE access to real-time news and the LIVE WEB. "
+                    "If you need up-to-the-minute info not in your context, call the 'search_web' tool. "
                     "Never say you don't have access to current events.\n\n"
                     "CRITICAL: Use the official tool-calling mechanism ONLY. Never use XML tags like <function> or <tool>. "
                     "If you need to perform an action, call a tool. If not, just reply naturally.\n\n"
@@ -317,6 +317,37 @@ async def self_reflection(state: AgentState):
             
     return state
 
+async def wake_up_node(state: AgentState):
+    """
+    Handles 'Wake Up' logic. If Callista is asleep, she only responds to wake words.
+    """
+    last_msg = state["messages"][-1].content.lower()
+    is_active = state.get("is_active", False)
+    last_time = state.get("last_active_time", 0)
+    now = time.time()
+
+    # 1. Check for wake words
+    wake_words = ["wake up", "hey callista", "hello callista", "callista", "jarvis"]
+    is_wake_call = any(word in last_msg for word in wake_words)
+
+    # 2. Check for timeout (1 min)
+    if is_active and (now - last_time > 60):
+        is_active = False
+
+    if not is_active:
+        if is_wake_call:
+            is_active = True
+            logger.info("Callista has woken up.")
+        else:
+            # Stay asleep
+            return {
+                "is_active": False,
+                "next": "end",
+                "messages": [AIMessage(content="[Callista is sleeping. Say 'Wake up' or 'Hey Callista' to talk.]")]
+            }
+
+    return {"is_active": is_active, "last_active_time": now, "next": "continue"}
+
 # --- UTILS ---
 
 async def memory_entry(state: AgentState):
@@ -331,6 +362,7 @@ async def memory_entry(state: AgentState):
 
 workflow = StateGraph(AgentState)
 
+workflow.add_node("wake_up", wake_up_node)
 workflow.add_node("memory_entry", memory_entry)
 workflow.add_node("supervisor", supervisor)
 workflow.add_node("call", call_specialist)
@@ -341,7 +373,14 @@ workflow.add_node("reflect", self_reflection)
 workflow.add_node("triage", advisory_triage)
 workflow.add_node("travel", travel_intelligence)
 
-workflow.add_edge(START, "memory_entry")
+workflow.add_edge(START, "wake_up")
+
+def after_wake(state: AgentState):
+    if state.get("next") == "end":
+        return END
+    return "memory_entry"
+
+workflow.add_conditional_edges("wake_up", after_wake)
 workflow.add_edge("memory_entry", "travel")
 workflow.add_edge("travel", "triage")
 workflow.add_edge("triage", "supervisor")

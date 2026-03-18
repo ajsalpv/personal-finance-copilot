@@ -498,3 +498,28 @@ all_tools = [
     get_purchase_advice,
     get_emergency_readiness,
 ]
+
+@tool
+async def search_web(query: str) -> str:
+    """
+    Searches the live web for current events, news, and general information.
+    Required argument: query (str).
+    Use this when the user asks for anything real-world or current that isn't in your local news context.
+    """
+    from duckduckgo_search import DDGS
+    try:
+        results = []
+        with DDGS() as ddgs:
+            for r in ddgs.text(query, max_results=5):
+                results.append(f"Title: {r['title']}\nSource: {r['href']}\nBody: {r['body']}\n")
+        
+        if not results:
+            return f"No live results found for '{query}'."
+        
+        return "WEB SEARCH RESULTS:\n\n" + "\n".join(results)
+    except Exception as e:
+        logger.error(f"Error in web search: {e}")
+        return f"Failed to search the web: {str(e)}"
+
+# Re-update all_tools
+all_tools.append(search_web)

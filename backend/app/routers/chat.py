@@ -14,6 +14,7 @@ class ChatRequest(BaseModel):
     message: str
     thread_id: str | None = None
     image_base64: str | None = None
+    audio_base64: str | None = None
 
 class ChatResponse(BaseModel):
     reply: str
@@ -31,6 +32,30 @@ async def chat_with_callista(
     """
     Send a natural language message to the AI Agent (Callista).
     """
+    # 0. Voice ID Check (Bio-Authorization)
+    if current_user.get("voice_embedding"):
+        from app.security.voice_auth import verify_voice, bytes_to_embedding
+        import base64
+        
+        if not payload.audio_base64:
+             raise HTTPException(
+                 status_code=403, 
+                 detail="VOICE_REQUIRED: This system is locked to the owner's voice. Please provide audio fingerprint."
+             )
+        
+        try:
+            audio_data = base64.b64decode(payload.audio_base64)
+            ref_emb = bytes_to_embedding(current_user["voice_embedding"])
+            verified, score = verify_voice(audio_data, ref_emb)
+            
+            if not verified:
+                raise HTTPException(
+                    status_code=403, 
+                    detail=f"VOICE_MISMATCH: Speaker verification failed (score: {score:.2f}). Access denied."
+                )
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Voice processing error: {str(e)}")
+
     thread_id = payload.thread_id if payload.thread_id else str(uuid.uuid4())
     user_id = str(current_user["id"])
     
