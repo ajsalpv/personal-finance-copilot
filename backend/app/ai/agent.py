@@ -17,6 +17,7 @@ from app.ai.state import AgentState
 from app.ai.tools import all_tools
 from app.ai.specialists.call_agent import get_call_concierge_prompt
 from app.ai.specialists.memory_agent import extract_and_store_facts
+from app.ai.specialists.language_agent import get_language_tutor_prompt
 from app.services.memory_service import get_long_term_memory
 from app.services.news_intelligence import NewsIntelligenceService
 from app.services.location_service import LocationService
@@ -88,6 +89,24 @@ async def call_specialist(state: AgentState):
     ] + history
     # Specialist can use premium for better dialogue
     response = await get_llm(model_type="premium").ainvoke(messages)
+    return {"messages": [response]}
+
+async def language_expert(state: AgentState):
+    """Handles language tutoring and learning."""
+    user_id = state.get("user_id", "default_user")
+    memory_context = state.get("memory_context", "")
+    history = state["messages"][-10:]
+    
+    # Fetch user level (simulated for now, could be in state)
+    user_level = 1 
+    
+    messages = [
+        get_language_tutor_prompt(user_level=user_level, language="Russian"),
+        SystemMessage(content=f"LONG-TERM CONTEXT:\n{memory_context}")
+    ] + history
+    
+    llm_with_tools = get_llm(with_tools=all_tools, model_type="premium")
+    response = await llm_with_tools.ainvoke(messages)
     return {"messages": [response]}
 
 async def system_manager(state: AgentState):
@@ -251,9 +270,10 @@ async def supervisor(state: AgentState):
         - 'call': Managing phone calls, answering calls, concierge services.
         - 'vision': Camera, screen, image recognition, narration of surroundings.
         - 'system': Finance, budgeting, tasks, reminders, memory, general questions.
+        - 'language': Teaching languages (Russian, etc.), translations, tutoring.
         
         RESPOND IN STRICT JSON:
-        {"next": "call/vision/system", "reasoning": "short explanation"}
+        {"next": "call/vision/system/language", "reasoning": "short explanation"}
         Only return JSON."""
         
         # Truncate history for supervisor
@@ -327,8 +347,34 @@ async def wake_up_node(state: AgentState):
     now = time.time()
 
     # 1. Check for wake words
-    wake_words = ["wake up", "hey callista", "hello callista", "callista", "jarvis"]
+    wake_words = [
+        # Discovered multilingual wake words
+        "salve callista", "salve zafira", 
+        "kalos callista", "kalos zafira", 
+        "zdravo callista", "zdravo zafira", 
+        "bonjour callista", "bonjour zafira", 
+        "ya callista", "ya zafira",
+        "wake up", "jarvis", "hey callista", "hello callista"
+    ]
     is_wake_call = any(word in last_msg for word in wake_words)
+    
+    # 3. Check for sleep/bye phrases
+    sleep_words = [
+        "ciao callista", "ciao zafira", 
+        "vale callista", "vale zafira", 
+        "poka callista", "poka zafira",
+        "bye", "goodbye", "sleep"
+    ]
+    is_sleep_call = any(word in last_msg for word in sleep_words)
+
+    if is_sleep_call:
+        is_active = False
+        logger.info("Callista is going to sleep.")
+        return {
+            "is_active": False,
+            "next": "end",
+            "messages": [AIMessage(content="Goodbye. I'm going to sleep now.")]
+        }
 
     # 2. Check for timeout (1 min)
     if is_active and (now - last_time > 60):
@@ -368,6 +414,7 @@ workflow.add_node("supervisor", supervisor)
 workflow.add_node("call", call_specialist)
 workflow.add_node("vision", vision_expert)
 workflow.add_node("system", system_manager)
+workflow.add_node("language", language_expert)
 workflow.add_node("tools", ToolNode(tools=all_tools))
 workflow.add_node("reflect", self_reflection)
 workflow.add_node("triage", advisory_triage)
@@ -392,6 +439,7 @@ workflow.add_conditional_edges(
         "call": "call",
         "vision": "vision",
         "system": "system",
+        "language": "language"
     }
 )
 
@@ -402,9 +450,11 @@ def should_continue(state: AgentState):
     return "reflect"
 
 workflow.add_conditional_edges("system", should_continue)
+workflow.add_conditional_edges("language", should_continue)
 workflow.add_edge("tools", "system")
 workflow.add_edge("call", "reflect")
 workflow.add_edge("vision", "reflect")
+workflow.add_edge("language", "reflect")
 workflow.add_edge("reflect", END)
 
 memory = MemorySaver()

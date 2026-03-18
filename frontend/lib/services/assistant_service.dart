@@ -68,6 +68,21 @@ class AssistantService {
             await _controlDevice(parts[1], parts[2]);
           }
           break;
+        case 'ALARM':
+          if (parts.length > 1) {
+            await _setAlarm(parts[1], parts.length > 2 ? parts[2] : '');
+          }
+          break;
+        case 'REMINDER':
+          if (parts.length > 2) {
+            await _addReminder(parts[1], parts[2]);
+          }
+          break;
+        case 'SETTING':
+          if (parts.length > 2) {
+            await _modifySetting(parts[1], parts[2]);
+          }
+          break;
         case 'ANSWER_CALL':
           await _answerCallWithCallista();
           break;
@@ -80,6 +95,33 @@ class AssistantService {
     } catch (e) {
       _logger.severe('Error executing assistant command $action: $e');
     }
+  }
+
+  static Future<void> _setAlarm(String timeStr, String label) async {
+    _logger.info("Setting alarm for $timeStr with label $label");
+    // Standard Android Intent for Alarms
+    final Uri url = Uri.parse('intent:#Intent;action=android.intent.action.SET_ALARM;S.android.intent.extra.alarm.MESSAGE=${Uri.encodeComponent(label)};i.android.intent.extra.alarm.HOUR=${timeStr.split(':')[0]};i.android.intent.extra.alarm.MINUTES=${timeStr.split(':')[1]};S.android.intent.extra.alarm.SKIP_UI=true;end');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      // Fallback for newer Android versions or if intent fails
+      _logger.warning("Could not launch direct intent, trying clock app...");
+    }
+  }
+
+  static Future<void> _addReminder(String text, String dueTime) async {
+    _logger.info("Adding reminder: $text at $dueTime");
+    // Reminders are often handled via Calendar or specialized apps
+    // For now, we'll route to Calendar Event with a 'Reminder' prefix
+    await _addCalendarEvent("Reminder: $text", dueTime, "Phone Reminder");
+  }
+
+  static Future<void> _modifySetting(String feature, String value) async {
+    _logger.info("Modifying setting $feature to $value");
+    // Settings often require specific platform channels. 
+    // We will log and potentially trigger a generic 'settings' open.
+    final Uri url = Uri.parse('package:com.android.settings'); // Mock/General
+    _logger.info("DEVICE SETTING CHANGE: $feature -> $value");
   }
 
   static Future<void> _answerCallWithCallista() async {

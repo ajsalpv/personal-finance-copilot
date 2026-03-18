@@ -16,8 +16,9 @@ import time
 from app.database import async_session_factory
 from app.config import get_settings
 from app.services import (
-    transaction_service, task_service, memory_service, 
-    budget_service, news_intelligence, location_service, emergency_service
+    transaction_service, task_service, memory_service,
+    budget_service, news_intelligence, location_service, emergency_service,
+    learning_service
 )
 
 logger = logging.getLogger(__name__)
@@ -361,13 +362,84 @@ async def list_calendar_events(date: Optional[str] = None) -> str:
     return f"COMMAND:LIST_CALENDAR|{date or ''}"
 
 @tool
-async def control_device(feature: str, action: str) -> str:
+async def set_alarm(time_str: str, label: Optional[str] = None) -> str:
     """
-    Controls phone hardware/settings like Flashlight, Volume, etc.
-    Required arguments: feature (str, e.g., 'flashlight', 'volume'), action (str, e.g., 'on', 'off', 'up', 'down').
-    Use this when the user says "turn on flashlight" or "mute volume".
+    Sets an alarm on the user's phone.
+    Required argument: time_str (e.g., '07:30', '7:30 AM').
+    Optional: label (str).
+    Use this when the user says "set an alarm for 7am" or "wake me up at 8".
     """
-    return f"COMMAND:DEVICE|{feature}|{action}"
+    return f"COMMAND:ALARM|{time_str}|{label or ''}"
+
+@tool
+async def add_phone_reminder(text: str, due_time: str) -> str:
+    """
+    Adds a system-level reminder on the phone.
+    Required arguments: text (str), due_time (ISO format or descriptive like 'in 5 minutes').
+    Use this when the user says "remind me to take medicine in 10 minutes".
+    """
+    return f"COMMAND:REMINDER|{text}|{due_time}"
+
+@tool
+async def modify_phone_setting(feature: str, value: str) -> str:
+    """
+    Modifies a phone system setting (Brightness, Volume, Bluetooth, DND).
+    Required arguments: feature (str, e.g. 'brightness', 'bluetooth'), value (str, e.g. '50%', 'on', 'off').
+    Use this when the user says "turn on bluetooth" or "set brightness to max".
+    """
+    return f"COMMAND:SETTING|{feature}|{value}"
+
+@tool
+async def update_learning_progress(
+    language: str, 
+    word: Optional[str] = None, 
+    translation: Optional[str] = None,
+    mastered: bool = False, 
+    score: Optional[int] = None,
+    config: RunnableConfig = None
+) -> str:
+    """
+    Updates the user's language learning progress in the database.
+    Use this when the user learns a new word, finishes a lesson, or practices.
+    """
+    user_id = await _get_user_id(config)
+    if not user_id: return "Error: User context not found."
+    
+    try:
+        async with async_session_factory() as db:
+            if word and translation:
+                await learning_service.add_vocabulary(db, user_id, language, word, translation)
+            if score is not None:
+                await learning_service.record_lesson(db, user_id, language, "chat", score)
+            return f"Progress updated for {language}."
+    except Exception as e:
+        logger.error(f"Error updating learning progress: {e}")
+        return f"Failed to update progress: {str(e)}"
+
+@tool
+async def get_learning_status(language: str, config: RunnableConfig = None) -> str:
+    """
+    Retrieves the user's learning stats, streaks, and top words for a language.
+    """
+    user_id = await _get_user_id(config)
+    if not user_id: return "Error: User context not found."
+    
+    try:
+        async with async_session_factory() as db:
+            progress = await learning_service.get_progress(db, user_id, language)
+            if not progress:
+                return f"You haven't started learning {language} yet."
+            
+            return (
+                f"--- {language} Learning Status ---\n"
+                f"Level: {progress['current_level']}\n"
+                f"Words Learned: {progress['total_words_learned']}\n"
+                f"Daily Streak: {progress['daily_streak']} days\n"
+                f"Points: {progress['points']}"
+            )
+    except Exception as e:
+        logger.error(f"Error getting learning status: {e}")
+        return "Failed to retrieve learning status."
 
 @tool
 async def get_strategic_advisory(config: RunnableConfig = None) -> str:
@@ -494,6 +566,11 @@ all_tools = [
     add_calendar_event,
     list_calendar_events,
     control_device,
+    set_alarm,
+    add_phone_reminder,
+    modify_phone_setting,
+    update_learning_progress,
+    get_learning_status,
     get_strategic_advisory,
     get_purchase_advice,
     get_emergency_readiness,

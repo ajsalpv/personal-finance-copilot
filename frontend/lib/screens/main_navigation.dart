@@ -3,6 +3,7 @@ import 'chat_screen.dart';
 import 'dashboard_screen.dart';
 import 'tasks_screen.dart';
 import 'insights_screen.dart';
+import 'learning_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -17,6 +18,7 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _screens = [
     const DashboardScreen(),
     ChatScreen(),
+    const LearningScreen(),
     const TasksScreen(),
     const InsightsScreen(),
   ];
@@ -54,6 +56,10 @@ class _MainNavigationState extends State<MainNavigation> {
             BottomNavigationBarItem(
               icon: Icon(Icons.auto_awesome_rounded),
               label: 'Callista',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.school_rounded),
+              label: 'Learning',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.task_alt_rounded),

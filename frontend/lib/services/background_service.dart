@@ -23,11 +23,23 @@ class BackgroundVoiceHandler extends TaskHandler {
       await _speech.listen(
         onResult: (val) {
           final text = val.recognizedWords.toLowerCase();
-          if (text.contains('callista') || text.contains('zafira')) {
+          final wakeWords = [
+            'salve callista', 'salve zafira',
+            'kalos callista', 'kalos zafira',
+            'zdravo callista', 'zdravo zafira',
+            'bonjour callista', 'bonjour zafira',
+            'ya callista', 'ya zafira',
+            'wake up', 'jarvis', 'callista', 'zafira'
+          ];
+
+          if (wakeWords.any((word) => text.contains(word))) {
             _logger.info("Wake word detected in background!");
-            // Notify the main app or trigger action
             FlutterForegroundTask.launchApp();
             sendPort?.send('WAKE_WORD_DETECTED');
+          } else if (text.contains('open camera') || text.contains('show me')) {
+            _logger.info("Camera command detected in background!");
+            FlutterForegroundTask.launchApp();
+            sendPort?.send('OPEN_CAMERA_DETECTED');
           }
         },
         listenFor: const Duration(seconds: 10),

@@ -15,6 +15,8 @@ import '../widgets/call_concierge_overlay.dart';
 import '../widgets/visual_feedback.dart';
 import '../widgets/floating_assistant.dart';
 import 'dashboard_screen.dart';
+import 'settings_screen.dart';
+import 'learning_screen.dart';
 import 'package:logging/logging.dart';
 
 final _logger = Logger('ChatScreen');
@@ -428,6 +430,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     // Initial welcome message (or load history)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadHistory();
+      // Listen for background service events
+      BackgroundService.sendPort?.listen((message) {
+        if (message == 'WAKE_WORD_DETECTED') {
+          _logger.info("Wake word detected via background service bridge.");
+          _listen(); // Trigger voice listening
+        } else if (message == 'OPEN_CAMERA_DETECTED') {
+          _logger.info("Camera command detected via background service bridge.");
+          if (!_isVisionMode) _toggleVisionMode();
+        }
+      });
     });
   }
 
@@ -884,6 +896,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   activeColor: Colors.redAccent,
                   onTap: _clearHistory,
                 ),
+                _AppBarIcon(
+                  icon: Icons.settings_rounded,
+                  active: false,
+                  activeColor: Colors.white70,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                ),
                 const SizedBox(width: 4),
               ],
       ),
@@ -1078,6 +1096,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => DashboardScreen()));
+            },
+          ),
+          _DrawerItem(
+            icon: Icons.school_rounded,
+            label: 'Language Learning',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const LearningScreen()));
+            },
+          ),
+          _DrawerItem(
+            icon: Icons.settings_rounded,
+            label: 'Settings',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
             },
           ),
           const Spacer(),
