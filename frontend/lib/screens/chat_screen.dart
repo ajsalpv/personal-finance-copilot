@@ -18,6 +18,7 @@ import 'dashboard_screen.dart';
 import 'settings_screen.dart';
 import 'learning_screen.dart';
 import 'package:logging/logging.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 final _logger = Logger('ChatScreen');
 
@@ -431,7 +432,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadHistory();
       // Listen for background service events
-      BackgroundService.sendPort?.listen((message) {
+      FlutterForegroundTask.receivePort?.listen((message) {
         if (message == 'WAKE_WORD_DETECTED') {
           _logger.info("Wake word detected via background service bridge.");
           _listen(); // Trigger voice listening
