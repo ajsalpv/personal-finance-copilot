@@ -86,10 +86,12 @@ async def call_specialist(state: AgentState):
     history = state["messages"][-10:]
     plan = state.get("plan", [])
     current_step = plan[0] if plan else "Execute call task"
+    correction = state.get("correction")
+    correction_prompt = f"\nADVICE FROM PREVIOUS ATTEMPT: {correction}" if correction else ""
     
     messages = [
         get_call_concierge_prompt(),
-        SystemMessage(content=f"PLAN STEP: {current_step}\nLONG-TERM CONTEXT:\n{memory_context}")
+        SystemMessage(content=f"PLAN STEP: {current_step}{correction_prompt}\nLONG-TERM CONTEXT:\n{memory_context}")
     ] + history
     # Specialist can use premium for better dialogue
     response = await get_llm(model_type="premium").ainvoke(messages)
@@ -106,10 +108,12 @@ async def language_expert(state: AgentState):
     
     plan = state.get("plan", [])
     current_step = plan[0] if plan else "Execute language task"
+    correction = state.get("correction")
+    correction_prompt = f"\nADVICE FROM PREVIOUS ATTEMPT: {correction}" if correction else ""
     
     messages = [
         get_language_tutor_prompt(user_level=user_level, language="Russian"),
-        SystemMessage(content=f"PLAN STEP: {current_step}\nLONG-TERM CONTEXT:\n{memory_context}")
+        SystemMessage(content=f"PLAN STEP: {current_step}{correction_prompt}\nLONG-TERM CONTEXT:\n{memory_context}")
     ] + history
     
     llm_with_tools = get_llm(with_tools=all_tools, model_type="premium")
@@ -137,13 +141,15 @@ async def system_manager(state: AgentState):
         plan = state.get("plan", [])
         thought = state.get("thought", "")
         current_step = plan[0] if plan else "Execute request"
+        correction = state.get("correction")
+        correction_prompt = f"\nCRITICAL CORRECTION FROM REFLEXION: {correction}" if correction else ""
 
         messages = [
             SystemMessage(
                 content=(
                     "You are Callista (Agentic reasoning mode). Follow the current plan step-by-step.\n"
                     f"STRATEGIC THOUGHT: {thought}\n"
-                    f"CURRENT PLAN STEP: {current_step}\n\n"
+                    f"CURRENT PLAN STEP: {current_step}{correction_prompt}\n\n"
                     "Use tools for finance, system tasks, memory, and web search. Tone: Premium/Jarvis.\n"
                     "REAL-TIME ACCESS: You HAVE access to real-time news and the LIVE WEB. Call 'search_web' if needed.\n"
                     "CRITICAL: Complete the current task perfectly. If satisfied, your result will be reviewed by the Reflection Agent.\n"
@@ -189,9 +195,11 @@ async def vision_expert(state: AgentState):
 
     plan = state.get("plan", [])
     current_step = plan[0] if plan else "Analyze environmental context"
+    correction = state.get("correction")
+    correction_prompt = f"\nRE-EVALUATION ADVICE: {correction}" if correction else ""
 
     messages = [
-        SystemMessage(content=f"{system_instr}\n\nPLAN STEP: {current_step}\nLTM Context: {memory_context}")
+        SystemMessage(content=f"{system_instr}\n\nPLAN STEP: {current_step}{correction_prompt}\nLTM Context: {memory_context}")
     ] + history
     
     # Inject the image if present
@@ -283,19 +291,33 @@ async def planner_node(state: AgentState):
     """
     try:
         last_msg = state["messages"][-1].content
-        system_prompt = """You are the Callista Strategic Planner. 
-        Analyze the user's intent and create a step-by-step Execution Plan.
-        Break complex requests into independent tasks.
+        system_prompt = """You are the Callista Strategic Planner (First Principles Engine).
+        Analyze the user's intent and create a robust, error-free Execution Plan.
+        
+        RULES:
+        1. Break complex requests into small, verifiable steps.
+        2. Identify potential failure points (e.g., missing data, API limits).
+        3. Define success criteria for each step.
+        4. Consider negative constraints (what NOT to do).
         
         RESPOND IN STRICT JSON:
-        {"thought": "Your internal reasoning", "plan": ["Step 1", "Step 2", ...]}
+        {
+          "thought": "Deep reasoning about the request", 
+          "plan": ["Step 1", "Step 2", ...],
+          "constraints": ["Constraint 1", ...]
+        }
         Only return JSON."""
         
         messages = [SystemMessage(content=system_prompt), HumanMessage(content=last_msg)]
         response = await get_llm(model_type="premium").ainvoke(messages)
         
         data = json.loads(response.content.strip().replace("```json", "").replace("```", ""))
-        return {"thought": data.get("thought"), "plan": data.get("plan"), "next": "supervisor"}
+        return {
+            "thought": data.get("thought"), 
+            "plan": data.get("plan"), 
+            "correction": None, # Clear old corrections
+            "next": "supervisor"
+        }
     except Exception as e:
         logger.error(f"Planner Node Error: {e}")
         return {"next": "supervisor"}
@@ -310,22 +332,35 @@ async def reflexion_node(state: AgentState):
         if not plan: return state
         
         last_action_result = state["messages"][-1].content
-        system_prompt = f"""You are the Callista Reflection Agent.
-        Current Plan: {json.dumps(plan)}
-        Last Result: {last_action_result}
+        system_prompt = f"""You are the Callista Reflection & Quality Guard.
+        Current Goal: {plan[0] if plan else "None"}
+        Full Plan: {json.dumps(plan)}
+        Last Execution Result: {last_action_result}
         
-        Did the last action successfully complete the current plan step?
-        If yes, remove the step from the plan. If no, stay on the step and suggest a correction.
+        CRITIQUE:
+        1. Did the result satisfy the CURRENT goal?
+        2. Are there any errors or hallucinations in the output?
+        3. Should we proceed to the next step or RE-RUN the current step with a correction?
         
         RESPOND IN STRICT JSON:
-        {"is_satisfied": true/false, "remaining_plan": [...], "correction": "advice for next step"}
+        {
+          "is_satisfied": true/false, 
+          "remaining_plan": [...], 
+          "correction": "Specific technical advice if failed, else null"
+        }
         Only return JSON."""
         
         messages = [SystemMessage(content=system_prompt)]
         response = await get_llm(model_type="utility").ainvoke(messages)
         
         data = json.loads(response.content.strip().replace("```json", "").replace("```", ""))
-        return {"plan": data.get("remaining_plan"), "next": "supervisor"}
+        
+        # If not satisfied, we loop back to supervisor with the correction advice
+        return {
+            "plan": data.get("remaining_plan"), 
+            "correction": data.get("correction"),
+            "next": "supervisor"
+        }
     except Exception as e:
         logger.error(f"Reflexion Node Error: {e}")
         return state
@@ -337,10 +372,12 @@ async def supervisor(state: AgentState):
     try:
         plan = state.get("plan", [])
         thought = state.get("thought", "")
+        correction = state.get("correction")
+        correction_node = f"\nLAST STEP FAILED! CORRECTION: {correction}" if correction else ""
         
         system_prompt = f"""You are the Callista Supervisor (ACP/A2A Protocol).
         Your goal is to execute the following plan: {json.dumps(plan)}
-        Plan Context: {thought}
+        Plan Context: {thought}{correction_node}
         
         Current Specialists (Internal Endpoints):
         - 'call': Phone concierge / call handling.
@@ -530,13 +567,19 @@ def should_continue(state: AgentState):
         return "tools"
     return "reflect"
 
+def check_reflexion(state: AgentState):
+    """Determines if we should loop back or finish."""
+    if state.get("plan"):
+        return "supervisor"
+    return "reflect"
+
 workflow.add_conditional_edges("system", should_continue)
 workflow.add_conditional_edges("language", should_continue)
 workflow.add_edge("tools", "system")
 workflow.add_edge("call", "reflexion")
 workflow.add_edge("vision", "reflexion")
 workflow.add_edge("language", "reflexion")
-workflow.add_edge("reflexion", "reflect")
+workflow.add_conditional_edges("reflexion", check_reflexion)
 workflow.add_edge("reflect", END)
 
 memory = MemorySaver()

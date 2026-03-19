@@ -15,4 +15,5 @@ class AgentState(TypedDict):
     advisory_briefs: List[dict] | None
     plan: List[str] | None
     thought: str | None
+    correction: str | None
     next: str | None
