@@ -13,3 +13,6 @@ class AgentState(TypedDict):
     last_active_time: float
     image_base64: str | None
     advisory_briefs: List[dict] | None
+    plan: List[str] | None
+    thought: str | None
+    next: str | None

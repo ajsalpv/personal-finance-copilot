@@ -21,6 +21,7 @@ from app.ai.specialists.language_agent import get_language_tutor_prompt
 from app.services.memory_service import get_long_term_memory
 from app.services.news_intelligence import NewsIntelligenceService
 from app.services.location_service import LocationService
+from app.ai.protocols.acp import ACPRequest, ACPResponse, ACPHandover
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -83,9 +84,12 @@ async def call_specialist(state: AgentState):
     memory_context = state.get("memory_context", "")
     # Truncate history to last 10 messages for specialists
     history = state["messages"][-10:]
+    plan = state.get("plan", [])
+    current_step = plan[0] if plan else "Execute call task"
+    
     messages = [
         get_call_concierge_prompt(),
-        SystemMessage(content=f"LONG-TERM CONTEXT:\n{memory_context}")
+        SystemMessage(content=f"PLAN STEP: {current_step}\nLONG-TERM CONTEXT:\n{memory_context}")
     ] + history
     # Specialist can use premium for better dialogue
     response = await get_llm(model_type="premium").ainvoke(messages)
@@ -100,9 +104,12 @@ async def language_expert(state: AgentState):
     # Fetch user level (simulated for now, could be in state)
     user_level = 1 
     
+    plan = state.get("plan", [])
+    current_step = plan[0] if plan else "Execute language task"
+    
     messages = [
         get_language_tutor_prompt(user_level=user_level, language="Russian"),
-        SystemMessage(content=f"LONG-TERM CONTEXT:\n{memory_context}")
+        SystemMessage(content=f"PLAN STEP: {current_step}\nLONG-TERM CONTEXT:\n{memory_context}")
     ] + history
     
     llm_with_tools = get_llm(with_tools=all_tools, model_type="premium")
@@ -127,16 +134,19 @@ async def system_manager(state: AgentState):
         # Truncate history to last 15 messages to stay within TPM limits
         history = state["messages"][-15:]
 
+        plan = state.get("plan", [])
+        thought = state.get("thought", "")
+        current_step = plan[0] if plan else "Execute request"
+
         messages = [
             SystemMessage(
                 content=(
-                    "You are Callista, the core system manager. Use tools for finance, system tasks, memory, and web search. "
-                    "Tone: Premium/Jarvis.\n\n"
-                    "REAL-TIME ACCESS: You HAVE access to real-time news and the LIVE WEB. "
-                    "If you need up-to-the-minute info not in your context, call the 'search_web' tool. "
-                    "Never say you don't have access to current events.\n\n"
-                    "CRITICAL: Use the official tool-calling mechanism ONLY. Never use XML tags like <function> or <tool>. "
-                    "If you need to perform an action, call a tool. If not, just reply naturally.\n\n"
+                    "You are Callista (Agentic reasoning mode). Follow the current plan step-by-step.\n"
+                    f"STRATEGIC THOUGHT: {thought}\n"
+                    f"CURRENT PLAN STEP: {current_step}\n\n"
+                    "Use tools for finance, system tasks, memory, and web search. Tone: Premium/Jarvis.\n"
+                    "REAL-TIME ACCESS: You HAVE access to real-time news and the LIVE WEB. Call 'search_web' if needed.\n"
+                    "CRITICAL: Complete the current task perfectly. If satisfied, your result will be reviewed by the Reflection Agent.\n"
                     f"LONG-TERM USER CONTEXT:\n{memory_context}"
                     f"{advisory_text}"
                 )
@@ -177,8 +187,11 @@ async def vision_expert(state: AgentState):
         "Analyze objects, text, and context in the camera frame to assist the user proactively."
     )
 
+    plan = state.get("plan", [])
+    current_step = plan[0] if plan else "Analyze environmental context"
+
     messages = [
-        SystemMessage(content=f"{system_instr}\n\nLTM Context: {memory_context}")
+        SystemMessage(content=f"{system_instr}\n\nPLAN STEP: {current_step}\nLTM Context: {memory_context}")
     ] + history
     
     # Inject the image if present
@@ -260,20 +273,85 @@ async def travel_intelligence(state: AgentState):
         logger.error(f"Travel Intelligence Node Error: {e}")
     return state
 
+# --- AGENTIC REASONING NODES ---
+
+async def planner_node(state: AgentState):
+    """
+    [PLANNING AGENT]
+    Breaks down the user request into a step-by-step strategy.
+    Uses First Principles thinking.
+    """
+    try:
+        last_msg = state["messages"][-1].content
+        system_prompt = """You are the Callista Strategic Planner. 
+        Analyze the user's intent and create a step-by-step Execution Plan.
+        Break complex requests into independent tasks.
+        
+        RESPOND IN STRICT JSON:
+        {"thought": "Your internal reasoning", "plan": ["Step 1", "Step 2", ...]}
+        Only return JSON."""
+        
+        messages = [SystemMessage(content=system_prompt), HumanMessage(content=last_msg)]
+        response = await get_llm(model_type="premium").ainvoke(messages)
+        
+        data = json.loads(response.content.strip().replace("```json", "").replace("```", ""))
+        return {"thought": data.get("thought"), "plan": data.get("plan"), "next": "supervisor"}
+    except Exception as e:
+        logger.error(f"Planner Node Error: {e}")
+        return {"next": "supervisor"}
+
+async def reflexion_node(state: AgentState):
+    """
+    [REFLEXION AGENT]
+    Reviews the result of the last action. If it didn't solve the plan step, it retries or adjusts.
+    """
+    try:
+        plan = state.get("plan", [])
+        if not plan: return state
+        
+        last_action_result = state["messages"][-1].content
+        system_prompt = f"""You are the Callista Reflection Agent.
+        Current Plan: {json.dumps(plan)}
+        Last Result: {last_action_result}
+        
+        Did the last action successfully complete the current plan step?
+        If yes, remove the step from the plan. If no, stay on the step and suggest a correction.
+        
+        RESPOND IN STRICT JSON:
+        {"is_satisfied": true/false, "remaining_plan": [...], "correction": "advice for next step"}
+        Only return JSON."""
+        
+        messages = [SystemMessage(content=system_prompt)]
+        response = await get_llm(model_type="utility").ainvoke(messages)
+        
+        data = json.loads(response.content.strip().replace("```json", "").replace("```", ""))
+        return {"plan": data.get("remaining_plan"), "next": "supervisor"}
+    except Exception as e:
+        logger.error(f"Reflexion Node Error: {e}")
+        return state
+
 # --- SUPERVISOR & AUTO-ROUTING ---
 
 async def supervisor(state: AgentState):
     """The central brain that routes to specialists using LLM reasoning."""
     try:
-        system_prompt = """You are the Callista Supervisor. Analyze the user request and determine the best specialist.
-        Specialists:
-        - 'call': Managing phone calls, answering calls, concierge services.
-        - 'vision': Camera, screen, image recognition, narration of surroundings.
-        - 'system': Finance, budgeting, tasks, reminders, memory, general questions.
-        - 'language': Teaching languages (Russian, etc.), translations, tutoring.
+        plan = state.get("plan", [])
+        thought = state.get("thought", "")
         
-        RESPOND IN STRICT JSON:
-        {"next": "call/vision/system/language", "reasoning": "short explanation"}
+        system_prompt = f"""You are the Callista Supervisor (ACP/A2A Protocol).
+        Your goal is to execute the following plan: {json.dumps(plan)}
+        Plan Context: {thought}
+        
+        Current Specialists (Internal Endpoints):
+        - 'call': Phone concierge / call handling.
+        - 'vision': Environmental awareness / screen / camera.
+        - 'system': Finance, task management, memory, search.
+        - 'language': Russian tutoring / translation.
+        
+        Analyze the current step of the plan and the conversation. Route to the correct specialist.
+        
+        RESPOND IN STRICT JSON (ACP Format):
+        {{"next": "call/vision/system/language", "reasoning": "ACP Routing Decision"}}
         Only return JSON."""
         
         # Truncate history for supervisor
@@ -410,6 +488,7 @@ workflow = StateGraph(AgentState)
 
 workflow.add_node("wake_up", wake_up_node)
 workflow.add_node("memory_entry", memory_entry)
+workflow.add_node("planner", planner_node)
 workflow.add_node("supervisor", supervisor)
 workflow.add_node("call", call_specialist)
 workflow.add_node("vision", vision_expert)
@@ -417,6 +496,7 @@ workflow.add_node("system", system_manager)
 workflow.add_node("language", language_expert)
 workflow.add_node("tools", ToolNode(tools=all_tools))
 workflow.add_node("reflect", self_reflection)
+workflow.add_node("reflexion", reflexion_node)
 workflow.add_node("triage", advisory_triage)
 workflow.add_node("travel", travel_intelligence)
 
@@ -430,7 +510,8 @@ def after_wake(state: AgentState):
 workflow.add_conditional_edges("wake_up", after_wake)
 workflow.add_edge("memory_entry", "travel")
 workflow.add_edge("travel", "triage")
-workflow.add_edge("triage", "supervisor")
+workflow.add_edge("triage", "planner")
+workflow.add_edge("planner", "supervisor")
 
 workflow.add_conditional_edges(
     "supervisor",
@@ -452,9 +533,10 @@ def should_continue(state: AgentState):
 workflow.add_conditional_edges("system", should_continue)
 workflow.add_conditional_edges("language", should_continue)
 workflow.add_edge("tools", "system")
-workflow.add_edge("call", "reflect")
-workflow.add_edge("vision", "reflect")
-workflow.add_edge("language", "reflect")
+workflow.add_edge("call", "reflexion")
+workflow.add_edge("vision", "reflexion")
+workflow.add_edge("language", "reflexion")
+workflow.add_edge("reflexion", "reflect")
 workflow.add_edge("reflect", END)
 
 memory = MemorySaver()
